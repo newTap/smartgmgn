@@ -1,0 +1,21 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "run-db": "pnpm run -C packages/sql dev",
+    "run-bug": "pnpm run -C packages/puppeteer dev"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "license": "ISC",
+  "link-workspace-packages": true,
+  "dependencies": {
+    "@tsconfig/recommended": "^1.0.8",
+    "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
