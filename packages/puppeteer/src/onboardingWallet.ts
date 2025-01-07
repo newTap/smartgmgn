@@ -44,10 +44,9 @@ export default async function onboardingWallet(onboardingPage:Page){
   const continueWallet2 = await onboardingPage.waitForSelector('button[class="sc-furwcr cDFkMY"]')
   await continueWallet2.click()
 
-  onboardingPage.waitForSelector('div[class="sc-cZMNgc sc-jnSlpE gBbJwU"]').then(async () => {
+  await onboardingPage.waitForSelector('div[class="sc-cZMNgc sc-jnSlpE gBbJwU"]').then(async () => {
     const continueWallet = await onboardingPage.waitForSelector('button[data-testid="onboarding-form-submit-button"]')
-    continueWallet.click()
-  })
+    continueWallet.click()  })
 
 
   // onboardingPage.close()

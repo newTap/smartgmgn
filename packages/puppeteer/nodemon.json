@@ -1,0 +1,11 @@
+{
+  "verbose": true,
+  "ignore": [],
+  "legacyWatch": true,
+  "execMap": {
+    "ts": "node"
+  },
+  "events": {
+    "start": "cls || clear"
+  }
+}
