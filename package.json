@@ -4,7 +4,9 @@
   "description": "",
   "scripts": {
     "run-db": "pnpm run -C packages/sql dev",
-    "run-bug": "pnpm run -C packages/puppeteer dev"
+    "run-bug": "pnpm run -C packages/puppeteer dev",
+    "dev-db": "pnpm run -C packages/puppeteer db",
+    "typeorm": "pnpm run -C packages/sql typeorm"
   },
   "keywords": [],
   "author": "",

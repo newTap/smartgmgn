@@ -2,7 +2,7 @@
    "name": "sql",
    "version": "0.0.1",
    "description": "Awesome project developed with TypeORM.",
-   "type": "commonjs",
+   "main": "index.ts",
    "devDependencies": {
       "ts-node": "10.9.1",
       "@types/node": "^16.11.10",
@@ -15,6 +15,7 @@
    },
    "scripts": {
       "dev": "ts-node src/index.ts",
+      "dev2": "ts-node index.ts",
       "typeorm": "typeorm-ts-node-commonjs"
    }
 }

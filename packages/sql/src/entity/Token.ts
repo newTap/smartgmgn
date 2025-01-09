@@ -1,23 +1,25 @@
-import { Entity, Column, PrimaryColumn } from "typeorm"
+import { Entity, Column, PrimaryColumn } from "typeorm";
 
 @Entity()
 export class Token {
+  @PrimaryColumn()
+  address: string;
 
-    @PrimaryColumn()
-    address: number
+  @Column()
+  name: string;
 
-    @Column()
-    name: string
+  @Column()
+  price: string;
 
-    @Column()
-    price: string
+  @Column()
+  symbol: string;
 
-    @Column()
-    symbol: string
+  @Column()
+  holders: string;
 
-    @Column()
-    open_timestamp: number
-    
-    @Column()
-    created_timestamp: number
+  @Column()
+  open_timestamp: Date;
+
+  @Column()
+  created_timestamp: Date;
 }
