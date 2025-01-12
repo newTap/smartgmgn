@@ -1,6 +1,4 @@
-# Awesome Project Build with TypeORM
-
-Steps to run this project:
+# Steps to run this project:
 
 1. Run `pnpm i` command
 2. copy `template.env` change file name to `.env`
