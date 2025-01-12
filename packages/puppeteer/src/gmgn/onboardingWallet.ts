@@ -1,10 +1,24 @@
-import { Page } from "puppeteer";
+import { Browser, Page } from "puppeteer";
+import notificationWallet from "./notificationWallet";
+import { sleep } from "../utils";
 
 const key = process.env.WALLET_SECRET;
 const pwd = process.env.WALLET_PASSWORD;
 
 // 初始钱包的导入
-export default async function onboardingWallet(onboardingPage: Page) {
+export default async function onboardingWallet(
+  browser: Browser,
+  pageClosed: () => void
+) {
+  // 钱包绑定页面的注册
+  const onboardingTarget = await browser.waitForTarget(
+    (target) =>
+      target.url() ===
+      "chrome-extension://bfnaelmomeimhlpmgjnjophhpkkoljpa/onboarding.html"
+  );
+  // 插件注入浏览器后会自动打开导入钱包的地址
+  const onboardingPage = await onboardingTarget.page();
+
   // 选择钱包登陆
   const loginWallet = await onboardingPage.waitForSelector(
     'button[class="ai2qbc9 t8qixv0 t8qixv1 t8qixv6 t8qixve _51gazn18q _51gazn1b4 _51gazn1ar _51gazn468 _51gazn476 _51gazn1hp _51gazn1lb _51gazn1j9 _51gazn332 _51gaznmv _51gaznnt _51gaznpp _51gaznor _51gazn1x _51gazn37 _51gaznt _51gazn12t _51gazngh _51gazn129 _51gazn129 _51gazn1by"]'
@@ -71,6 +85,9 @@ export default async function onboardingWallet(onboardingPage: Page) {
       );
       continueWallet.click();
     });
-
+  // 钱包绑定成功之后页面会退出,启动gmgn页面
+  onboardingPage.on("close", async () => {
+    pageClosed();
+  });
   // onboardingPage.close()
 }

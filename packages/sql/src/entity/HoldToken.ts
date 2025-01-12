@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from "typeorm";
+import { Token } from "./Token";
 
 export enum BUY_REASON {
   // 1.暴力捡垃圾
@@ -12,11 +13,11 @@ export enum BUY_REASON {
 @Entity()
 export class HoldToken {
   @PrimaryGeneratedColumn("uuid")
-  id: number;
+  id?: string;
 
-  @Index()
+  @OneToOne(() => Token, (token) => token.address)
   @Column()
-  address: number;
+  address: string;
 
   @Column()
   name: string;

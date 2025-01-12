@@ -1,7 +1,9 @@
-import { Entity, Column, PrimaryColumn } from "typeorm";
+import { Entity, Column, PrimaryColumn, OneToOne } from "typeorm";
+import { HoldToken } from "./HoldToken";
 
 @Entity()
 export class Token {
+  @OneToOne(() => HoldToken, (holdToken) => holdToken.address)
   @PrimaryColumn()
   address: string;
 
@@ -15,7 +17,7 @@ export class Token {
   symbol: string;
 
   @Column()
-  holders: string;
+  holders: number;
 
   @Column()
   open_timestamp: Date;

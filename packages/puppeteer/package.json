@@ -4,12 +4,13 @@
    "description": "",
    "scripts": {
       "dev": "npx -y tsx watch ./src/index.ts",
-      "start": "nodemon --exec node -r ts-node/register --env-file=.env src/index.ts"
+      "start": "node -r ts-node/register --env-file=.env src/index.ts"
    },
    "keywords": [],
    "author": "",
    "license": "ISC",
    "dependencies": {
+      "node-schedule": "^2.1.1",
       "node-stream-zip": "^1.15.0",
       "pg": "^8.4.0",
       "puppeteer": "^23.11.1",
@@ -17,12 +18,12 @@
       "puppeteer-extra-plugin-stealth": "^2.11.2",
       "puppeteer-mouse-helper": "^1.0.2",
       "reflect-metadata": "^0.1.13",
+      "sql": "workspace:*",
       "ts-loader": "^9.5.1",
       "ts-node": "^10.9.2",
       "tsx": "^4.19.2",
       "typescript": "^5.7.2",
-      "user-agents": "^1.1.409",
-      "sql": "workspace:*"
+      "user-agents": "^1.1.409"
    },
    "devDependencies": {
       "@types/node": "^16.11.10",
