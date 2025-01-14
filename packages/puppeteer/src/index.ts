@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import { InitializeDB } from "sql";
-import { start_gmgn } from "./gmgn";
+import { dev, start_gmgn } from "./gmgn";
 
 async function main() {
   // 初始化数据库
@@ -19,7 +19,7 @@ async function main() {
     return false;
   }
   // 启动gmgn爬虫
-  start_gmgn(db);
+  dev(db);
 }
 
 main();
