@@ -27,10 +27,12 @@ export const start_gmgn = async (db: InitializeDB) => {
     // 注入浏览器插件
     args: isHavePhantom
       ? [
+          "--no-sandbox",
+          "--no-first-run",
           `--disable-extensions-except=${metamaskExtension}`,
           `--load-extension=${metamaskExtension}`,
         ]
-      : [],
+      : ["--no-sandbox", "--disable-ipc-flooding-protection", "--no-first-run"],
   });
 
   // 根据是否含有钱包地址的环境变量,判断是否要处理钱包的绑定
@@ -46,7 +48,7 @@ export async function easy_gmgn(browser: Browser, db: InitializeDB) {
   const isHavePhantom = haveWalletProcess();
 
   let token_completeds: COMPLETED[];
-  const page = await browser.newPage();
+  const [page] = await browser.pages();
   const agent = new userAgent(
     {
       platform: "MacIntel",
@@ -114,6 +116,7 @@ export async function easy_gmgn(browser: Browser, db: InitializeDB) {
         created_timestamp: new Date(token.created_timestamp * 1000),
         holders: token.holder_count,
         name: token.name,
+        timestamp: token.open_timestamp,
         open_timestamp: new Date(token.open_timestamp * 1000),
         price: token.price,
         symbol: token.symbol,
@@ -121,6 +124,7 @@ export async function easy_gmgn(browser: Browser, db: InitializeDB) {
       try {
         // 打开token详情页
         await tokenDetail(browser, db, token.address);
+        console.log(`现在一共有${(await browser.pages())?.length}个页面`);
         // !当token详情页打开后,主页的response事件将会无响应
         // !必须重新激活gmgn首页
         await page.bringToFront();

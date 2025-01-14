@@ -22,6 +22,7 @@ export const tokenDetail = async (
   const vioMarketCap = process.env.VIO_MARKET_CAP;
   const page = await browser.newPage();
   let isBuy = false;
+  let reloadErrNum = 0;
   const agent = new userAgent(
     {
       platform: "MacIntel",
@@ -40,12 +41,38 @@ export const tokenDetail = async (
   const data = (await json.json()).data as TOKEN_INFO;
 
   await page.setViewport({ width: 1080, height: 1024 });
-  const openDate = new Date();
+  async function closePage() {
+    await page.close();
+    const pages = await browser.pages();
+    // job.cancel();
+    console.log(`token ${address} 页面关闭.当前还有${pages.length}个页面`);
+  }
+
+  async function reload() {
+    console.log("三小时重新加载一次页面", address);
+    try {
+      await page.reload({ timeout: 90_000 });
+      reloadErrNum = 0;
+    } catch (error) {
+      reloadErrNum++;
+      console.error(`${address} token detail新加载失败`, error);
+      if (reloadErrNum >= 3) {
+        console.log(`${address} token detail 多次加载失败,关闭页面`);
+        closePage();
+      } else {
+        reload();
+        console.error(`再次${reloadErrNum}尝试重新加载`, address);
+      }
+    }
+  }
+
   // 每一小时刷新一次页面
-  let job = schedule.scheduleJob(`${openDate.getMinutes()} 1 * * *`, () => {
-    console.log("一小时重新加载一次页面", address);
-    page.reload();
-  });
+  // let job = schedule.scheduleJob(
+  //   `${openDate.getMinutes()} */3 * * *`,
+  //   async () => {
+  //     reload();
+  //   }
+  // );
 
   // 将方法挂在到window下
   await page.exposeFunction(
@@ -60,7 +87,6 @@ export const tokenDetail = async (
       console.log(address, textValue);
       if (vioMarketCap >= tokenMarketCap) {
         isBuy = true;
-        job.cancel();
         // 达到了暴力购买的数值
         await db.setHoldToken({
           address: address,
@@ -74,7 +100,7 @@ export const tokenDetail = async (
 
         // 当购买完成之后,则不再做监听的操作直接关闭当前页面
         console.log(`${address} 以达到买入的市值: ${tokenMarketCap}`);
-        await page.close();
+        closePage();
       }
     }
   );

@@ -19,6 +19,11 @@ export class Token {
   @Column()
   holders: number;
 
+  @Column({
+    type: "int",
+  })
+  timestamp: number;
+
   @Column()
   open_timestamp: Date;
 

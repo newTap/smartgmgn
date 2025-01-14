@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { DataSource, Repository } from "typeorm";
+import { DataSource, Repository, getRepository } from "typeorm";
 import { Token } from "./src/entity/Token";
 import { HoldToken } from "./src/entity/HoldToken";
 
@@ -16,6 +16,7 @@ export class InitializeDB {
   dbConfig: DB_CONFIG_TYPE;
   AppDataSource: DataSource;
   tokenRepository: Repository<Token>;
+  holdTokenRepository: Repository<HoldToken>;
   constructor(config: DB_CONFIG_TYPE) {
     this.dbConfig = config;
     const { host, port, username, password, database } = config;
@@ -38,6 +39,7 @@ export class InitializeDB {
   async initializeDB() {
     await this.AppDataSource.initialize();
     this.tokenRepository = this.AppDataSource.getRepository(Token);
+    this.holdTokenRepository = this.AppDataSource.getRepository(HoldToken);
     this.isInitialized = this.AppDataSource.isInitialized;
     console.log("AppDataSource", this.AppDataSource.isInitialized);
     console.log("ok");
@@ -49,6 +51,7 @@ export class InitializeDB {
     console.log("存储", data.address);
     const token = new Token();
     token.address = data.address;
+    token.timestamp = data.timestamp;
     token.created_timestamp = data.created_timestamp;
     token.holders = data.holders;
     token.name = data.name;
@@ -58,18 +61,15 @@ export class InitializeDB {
     return await this.AppDataSource.manager.save(token);
   }
 
-  // 获取指定时间内token
-  async getTokens(timestamp: string | number) {
-    const currentTime = new Date();
-    const twoHoursAgo = new Date(
-      currentTime.getTime() - +timestamp * 60 * 60 * 1000
-    );
-    console.log(twoHoursAgo, currentTime);
+  // 获取指定时间内,还未购买的token
+  async getNotByTokens(value: string | number) {
     const tokens = await this.tokenRepository
       .createQueryBuilder("token")
-      .where(`token.open_timestamp BETWEEN ${twoHoursAgo} AND ${currentTime}`);
-    console.log(tokens.getSql());
-    return await tokens.getMany();
+      .leftJoin(HoldToken, "holdToken", "token.address = holdToken.address")
+      .where("token.timestamp > :value", { value })
+      .andWhere("holdToken.address IS NULL")
+      .getMany();
+    return tokens;
   }
 
   // 存贮买入token记录
