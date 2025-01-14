@@ -93,3 +93,19 @@ export interface TOKEN_INFO {
   liquidity: string;
   creation_timestamp: number;
 }
+
+
+export interface D_BOT_RESPONSE <T>{
+  err: boolean
+  res:T
+  docs:string
+}
+
+export interface D_BOT_WALLETS{
+  id:string;
+  name:string;
+  type: string;
+  address:string;
+}
+
+export type D_BOT_WALLETS_RESPONSE = D_BOT_WALLETS[]
