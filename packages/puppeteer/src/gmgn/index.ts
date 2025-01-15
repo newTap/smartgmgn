@@ -1,6 +1,5 @@
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import BlockResourcesPlugin from "puppeteer-extra-plugin-block-resources";
 import userAgent from "user-agents";
 import * as path from "path";
 import onboardingWallet from "./onboardingWallet";
@@ -13,11 +12,7 @@ import { loginWallet } from "./loginWallet";
 import { Cluster } from "puppeteer-cluster";
 
 puppeteer.use(StealthPlugin());
-puppeteer.use(
-  BlockResourcesPlugin({
-    blockedTypes: new Set<ResourceType>(["image", "stylesheet", "font"]),
-  })
-);
+
 
 export const dev = async (db: InitializeDB) => {
   const cluster = await Cluster.launch({
@@ -25,7 +20,7 @@ export const dev = async (db: InitializeDB) => {
     maxConcurrency: 1,
     puppeteer,
     puppeteerOptions: {
-      headless: false,
+      headless: true,
       devtools: true,
       // 注入浏览器插件
       args: [

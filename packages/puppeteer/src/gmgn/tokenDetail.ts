@@ -48,23 +48,23 @@ export const tokenDetail = async (
     console.log(`token ${address} 页面关闭.当前还有${pages.length}个页面`);
   }
 
-  async function reload() {
-    console.log("三小时重新加载一次页面", address);
-    try {
-      await page.reload({ timeout: 90_000 });
-      reloadErrNum = 0;
-    } catch (error) {
-      reloadErrNum++;
-      console.error(`${address} token detail新加载失败`, error);
-      if (reloadErrNum >= 3) {
-        console.log(`${address} token detail 多次加载失败,关闭页面`);
-        closePage();
-      } else {
-        reload();
-        console.error(`再次${reloadErrNum}尝试重新加载`, address);
-      }
-    }
-  }
+  // async function reload() {
+  //   console.log("三小时重新加载一次页面", address);
+  //   try {
+  //     await page.reload({ timeout: 90_000 });
+  //     reloadErrNum = 0;
+  //   } catch (error) {
+  //     reloadErrNum++;
+  //     console.error(`${address} token detail新加载失败`, error);
+  //     if (reloadErrNum >= 3) {
+  //       console.log(`${address} token detail 多次加载失败,关闭页面`);
+  //       closePage();
+  //     } else {
+  //       reload();
+  //       console.error(`再次${reloadErrNum}尝试重新加载`, address);
+  //     }
+  //   }
+  // }
 
   // 每一小时刷新一次页面
   // let job = schedule.scheduleJob(
