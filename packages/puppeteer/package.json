@@ -4,14 +4,13 @@
    "description": "",
    "scripts": {
       "dev": "npx -y tsx watch ./src/index.ts",
-      "start": "node -r ts-node/register --env-file=.env src/index.ts",
-      "wallet": "node -r ts-node/register --env-file=.env wallet.ts"
+      "wallet": "nodemon --exec node -r ts-node/register wallet.ts",
+      "start": "node -r ts-node/register --env-file=.env src/index.ts"
    },
    "keywords": [],
    "author": "",
    "license": "ISC",
    "dependencies": {
-      "@project-serum/anchor": "^0.26.0",
       "cross-fetch": "^4.1.0",
       "node-schedule": "^2.1.1",
       "node-stream-zip": "^1.15.0",
@@ -19,6 +18,8 @@
       "puppeteer": "^23.11.1",
       "puppeteer-cluster": "^0.24.0",
       "puppeteer-extra": "^3.3.6",
+      "puppeteer-extra-plugin-adblocker": "^2.13.6",
+      "puppeteer-extra-plugin-block-resources": "^2.4.3",
       "puppeteer-extra-plugin-stealth": "^2.11.2",
       "puppeteer-mouse-helper": "^1.0.2",
       "reflect-metadata": "^0.1.13",

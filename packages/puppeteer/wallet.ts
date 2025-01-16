@@ -1,4 +1,3 @@
-import fetch from 'cross-fetch';
 import { Dbot } from './src/utils/Dbot';
 
 const PRIVATE_KEY = '4qa3yG5c8XBKmNLx9YtFw5qkyd7wpBHdZpP1Njk83xs9o457DguNgmvRE524bie7UXwupTeMdxGBHRXnuXubakCj';

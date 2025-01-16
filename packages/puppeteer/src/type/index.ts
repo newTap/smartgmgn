@@ -109,3 +109,56 @@ export interface D_BOT_WALLETS{
 }
 
 export type D_BOT_WALLETS_RESPONSE = D_BOT_WALLETS[]
+export interface DEX_SEARCH_PAIR {
+  schemaVersion: string;
+  pairs: DEX_Pair[];
+}
+
+interface DEX_Pair {
+  chainId: string;
+  dexId: string;
+  url: string;
+  pairAddress: string;
+  baseToken: DEX_BaseToken;
+  quoteToken: DEX_BaseToken;
+  priceNative: string;
+  priceUsd: string;
+  txns: DEX_Txns;
+  volume: DEX_Volume;
+  priceChange: DEX_Volume;
+  liquidity: DEX_Liquidity;
+  fdv: number;
+  marketCap: number;
+  pairCreatedAt: number;
+}
+
+interface DEX_Liquidity {
+  usd: number;
+  base: number;
+  quote: number;
+}
+
+interface DEX_Volume {
+  h24: number;
+  h6: number;
+  h1: number;
+  m5: number;
+}
+
+interface DEX_Txns {
+  m5: DEX_M5;
+  h1: DEX_M5;
+  h6: DEX_M5;
+  h24: DEX_M5;
+}
+
+interface DEX_M5 {
+  buys: number;
+  sells: number;
+}
+
+interface DEX_BaseToken {
+  address: string;
+  name: string;
+  symbol: string;
+}

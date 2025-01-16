@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import { InitializeDB } from "sql";
-import { start_gmgn } from "./gmgn";
+import { Smart_Gmgn } from "./gmgn";
 
 async function main() {
   // 初始化数据库
@@ -18,8 +18,10 @@ async function main() {
     console.error("initializeDB error", error);
     return false;
   }
+
   // 启动gmgn爬虫
-  start_gmgn(db);
+  const gn = new Smart_Gmgn(db);
+  await gn.initialize()
 }
 
 main();
