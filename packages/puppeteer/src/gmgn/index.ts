@@ -220,20 +220,26 @@ export class Smart_Gmgn extends Dbot{
     );
   }
 
-  checkOrder(id:string,address:string, reason:BUY_REASON){
+  checkOrder(id:string,tokenAddress:string, reason:BUY_REASON){
     setTimeout(async () => {
       const data = await this.swapOrders(id)
 
       data.forEach(async (order) => {
         console.log(`Order ${id} state: ${order.state}, ${order.errorCode}: ${order.errorMessage}`)
-        if(order.state !== 'done') return false
+        // 初始化和进行中,重新查询
+        if(order.state === 'processing' || order.state === 'init'){
+          this.checkOrder(id, tokenAddress, reason)
+          return false
+        }
+        // 失败或过期
+        if(order.state === 'fail' || order.state === 'expired') return false
         // 订单已完成,查询交易信息
        try {
-         const info =  await this.queryAmount(this.defaultWallet.address ,address)
+         const info =  await this.queryAmount(this.defaultWallet.address ,tokenAddress)
          console.log('order info', info)
          await this.db.updatesHoldToken({
             id,
-            address,
+            address:tokenAddress,
             buy_reason:reason,
             buy_price: `${order.txPriceUsd}`,
             buy_amount: `${info.uiAmount}`
@@ -241,9 +247,9 @@ export class Smart_Gmgn extends Dbot{
        } catch (error) {
         console.error(`订单信息查询失败error`, error)
        }
-        
       })
-    }, 3000)
+      // 确认交易成功上链,并且其他三方api能成功返回数据
+    }, 10000)
   }
 
   inquireMarketCap(){
@@ -310,7 +316,7 @@ export class Smart_Gmgn extends Dbot{
             });
 
             this.tokenAddress.delete(address)
-            this.checkOrder(id,address, BUY_REASON.VIOLENCE)
+            this.checkOrder(id, address, BUY_REASON.VIOLENCE)
           } catch (error) {
             console.error(`${address} 老鹰查询市场失败了`,error)
           }
@@ -324,6 +330,7 @@ export class Smart_Gmgn extends Dbot{
   // 查询amount数量
   async queryAmount(wallet:string, tokenAddress: string) {
       let res = await fetch(`https://public-api.birdeye.so/v1/wallet/token_balance?wallet=${wallet}&token_address=${tokenAddress}`, {
+        method: 'GET',
         headers: {
           accept: 'application/json',
           'x-chain': 'solana',
@@ -331,6 +338,11 @@ export class Smart_Gmgn extends Dbot{
         }
       })
       const json = await res.json() as BIRDEYE_API<BIRDEYE_TOKEN_BALANCE>;
-      return json.data
+      console.log('json', json)
+      if(json.data){
+        return json.data
+      }else{
+        return await this.queryAmount(wallet, tokenAddress)
+      }
   }
 }
