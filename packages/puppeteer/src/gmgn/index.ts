@@ -1,248 +1,277 @@
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import userAgent from "user-agents";
-import * as path from "path";
-import onboardingWallet from "./onboardingWallet";
-import { COMPLETED, PUMP_LIST } from "../type";
+import schedule,{RescheduleJob} from "node-schedule";
+import { COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST, TOKEN_INFO } from "../type";
 import { InitializeDB } from "sql";
-import { tokenDetail } from "./tokenDetail";
-import { Browser, ResourceType } from "puppeteer";
-import { haveWalletProcess } from "../utils";
-import { loginWallet } from "./loginWallet";
+import { sleep } from "../utils";
 import { Cluster } from "puppeteer-cluster";
+import fetch from "cross-fetch";
+import { BUY_REASON } from "sql/src/entity/HoldToken";
 
 puppeteer.use(StealthPlugin());
 
+interface TokenConfig {
+  pairId:string
+  priceUsd: string
+  address: string,
+  name: string
+  symbol: string
+  timestamp: number
+}
 
-export const dev = async (db: InitializeDB) => {
-  const cluster = await Cluster.launch({
-    concurrency: Cluster.CONCURRENCY_PAGE,
-    maxConcurrency: 1,
-    puppeteer,
-    puppeteerOptions: {
-      headless: true,
-      devtools: true,
-      // 注入浏览器插件
-      args: [
-        "--no-sandbox",
-        "--disable-ipc-flooding-protection",
-        "--no-first-run",
-      ],
-    },
-  });
 
-  cluster.on("taskerror", (err, data, willRetry) => {
-    if (willRetry) {
-      console.warn(
-        `Encountered an error while crawling ${data}. ${err.message}\nThis job will be retried`
-      );
-    } else {
-      console.error(`Failed to crawl ${data}: ${err.message}`);
-    }
-  });
+export class Smart_Gmgn{
+  db: InitializeDB
+  vioMarketCap: number
+  tokenAddress: Map<string, TokenConfig > = new Map()
+  inquireStatus: boolean = false
+  MarketCapJob: RescheduleJob
+  cluster:Cluster
 
-  cluster.queue(
-    "https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home",
-    async ({ page, data: url }) => {
-      const browser = page.browser();
-      let token_completeds: COMPLETED[];
-      const agent = new userAgent(
-        {
-          platform: "MacIntel",
-        },
-        {
-          platform: "macOS",
-        }
-      );
-      // await page.goto("https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home");
-      const [homePage] = await browser.pages();
-      await homePage.setUserAgent(agent.toString());
-      await homePage.setViewport({ width: 1580, height: 1024 });
-      await homePage.goto("https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home");
-      await homePage.bringToFront();
-      // 确保在pump内
-      let pumpBtn = await homePage.waitForSelector(
-        "div[class='css-gstdun'] div:first-child"
-      );
-      await pumpBtn.click({ delay: 500 });
+  constructor(db: InitializeDB){
+    this.vioMarketCap = +process.env.VIO_MARKET_CAP || 3000;
+    this.db = db;
+  }
 
-      // 查数据库,是否含有没有监听完的token列表
-      // 监听响应
-      homePage.on("response", async (response) => {
-        const baseUrl =
-          "https://gmgn.ai/defi/quotation/v1/rank/sol/pump_ranks/1h";
-        const url = response.url();
-        // console.log('url', url)
-        if (url.indexOf(baseUrl) === -1) return false;
-        const status = response.status();
-        if (status !== 200) {
-          console.error("sol/pump_ranks/1h api error", status);
-          return false;
-        }
-        const json = (await response.json()).data as PUMP_LIST;
-        const completeds = json.completeds;
-        // 第一次记录token
-        if (!token_completeds) {
-          token_completeds = completeds;
-          console.log("第一次记录");
-          return false;
-        }
-        console.log("开始校验");
-        // 校验新的token列表与旧token列表区别
-        for (let i = 0; i < completeds.length; i++) {
-          const token = completeds[i];
-          // 当遇到相同token时,说明后续都是旧数据
-          if (token_completeds.find((t) => t.address === token.address)) {
-            token_completeds = completeds;
+  async initialize(){
+    this.cluster = await Cluster.launch({
+      concurrency: Cluster.CONCURRENCY_BROWSER,
+      maxConcurrency: 2,
+      puppeteer,
+      puppeteerOptions: {
+        headless: true,
+        devtools: true,
+        // 注入浏览器插件
+        args: [
+          "--no-sandbox",
+          "--disable-ipc-flooding-protection",
+          "--no-first-run",
+        ],
+      },
+    });
+    await this.initTokens()
+    await this.openGmgn()
+    this.inquireMarketCap()
+  }
+
+  // 获取监听token截止时间的秒值
+  getMs(){
+    const TOKEN_EXPIRE = (+process.env.TOKEN_EXPIRE) || 24
+    const ms =  ((+new Date()) - TOKEN_EXPIRE * 60 * 60 * 1000) /1000 
+    return ms
+  }
+
+  async initTokens(){
+    const ms = this.getMs()
+    // 初始化token列表
+    const data = await this.db.getNotByTokens(ms)
+    console.log(`从数据库中获取了${data.length} tokens`)
+    data.forEach(token =>{
+      this.tokenAddress.set(token.address,{
+        pairId: token.pair_id,
+        priceUsd: token.price,
+        address: token.address,
+        name: token.name,
+        symbol: token.symbol,
+        timestamp: token.timestamp,
+      })
+    })
+  }
+
+  async getPairId(address:string){
+    await this.cluster.queue(
+      `https://gmgn.ai/sol/token/${address}`,
+      async ({ page, data: url }) => {
+        await page.goto(url, { timeout: 900_000 })
+        // 获取pair 数据信息
+        const json = await page.waitForResponse(
+          (res) => res.url() === `https://gmgn.ai/api/v1/token_info/sol/${address}`,
+          { timeout: 90_000 }
+        );
+
+        const data = (await json.json()).data as TOKEN_INFO;
+        const pairId = data.biggest_pool_address
+        
+        await this.db.updateToken({
+          address: address,
+          pair_id: pairId
+        })
+        
+        this.tokenAddress.set(address,{
+          pairId,
+          priceUsd: '',
+          address: address,
+          name: data?.name || "--",
+          symbol: data?.symbol || "--",
+          timestamp: data.open_timestamp
+        })  
+
+        await sleep(1000)
+
+        await page.close();
+      })
+  }
+
+  async openGmgn(){
+    this.cluster.on("taskerror", (err, data, willRetry) => {
+      if (willRetry) {
+        console.warn(
+          `Encountered an error while crawling ${data}. ${err.message}\nThis job will be retried`
+        );
+      } else {
+        console.error(`Failed to crawl ${data}: ${err.message}`);
+      }
+    });
+    this.cluster.queue(
+      "https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home",
+      async ({ page, data: url }) => {
+        const browser = page.browser();
+        let token_completeds: COMPLETED[];
+        const agent = new userAgent(
+          {
+            platform: "MacIntel",
+          },
+          {
+            platform: "macOS",
+          }
+        );
+        await page.goto("https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home");
+        const [homePage] = await browser.pages();
+        await homePage.setUserAgent(agent.toString());
+        await homePage.setViewport({ width: 1580, height: 1024 });
+        await homePage.goto("https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home");
+        await homePage.bringToFront();
+        // 确保在pump内
+        let pumpBtn = await homePage.waitForSelector(
+          "div[class='css-gstdun'] div:first-child"
+        );
+        await pumpBtn.click({ delay: 500 });
+
+        // 监听响应
+        homePage.on("response", async (response) => {
+          const baseUrl =
+            "https://gmgn.ai/defi/quotation/v1/rank/sol/pump_ranks/1h";
+          const url = response.url();
+          // console.log('url', url)
+          if (url.indexOf(baseUrl) === -1) return false;
+          const status = response.status();
+          if (status !== 200) {
+            console.error("sol/pump_ranks/1h api error", status);
             return false;
           }
+          const json = (await response.json()).data as PUMP_LIST;
+          const completeds = json.completeds;
+          // 第一次记录token
+          if (!token_completeds) {
+            token_completeds = completeds;
+            console.log("第一次记录");
+            return false;
+          }
+          console.log("开始校验");
+          // 校验新的token列表与旧token列表区别
+          for (let i = 0; i < completeds.length; i++) {
+            const token = completeds[i];
+            // 当遇到相同token时,说明后续都是旧数据
+            if (token_completeds.find((t) => t.address === token.address)) {
+              token_completeds = completeds;
+              return false;
+            }
+            console.log("新数据来了");
+            // 服务器中存储需要跟踪的数据
+            await this.db.setToken({
+              pair_id: '',
+              address: token.address,
+              created_timestamp: new Date(token.created_timestamp * 1000),
+              holders: token.holder_count,
+              name: token.name,
+              timestamp: token.open_timestamp,
+              open_timestamp: new Date(token.open_timestamp * 1000),
+              price: token.price,
+              symbol: token.symbol,
+            });
+            // 获取pair id并且入库
+            await this.getPairId(token.address)
 
-          console.log("新数据来了");
-          // 服务器中存储需要跟踪的数据
-          await db.setToken({
-            address: token.address,
-            created_timestamp: new Date(token.created_timestamp * 1000),
-            holders: token.holder_count,
-            name: token.name,
-            timestamp: token.open_timestamp,
-            open_timestamp: new Date(token.open_timestamp * 1000),
-            price: token.price,
-            symbol: token.symbol,
-          });
+            // try {
+            //   // 打开token详情页
+            //   await tokenDetail(browser, db, token.address);
+            //   console.log(`现在一共有${(await browser.pages())?.length}个页面`);
+            //   // !当token详情页打开后,主页的response事件将会无响应
+            //   // !必须重新激活gmgn首页
+            //   await homePage.bringToFront();
+            // } catch (error) {
+            //   console.error("open token detail error", error);
+            // }
+          }
+        });
+      }
+    );
+  }
+
+  inquireMarketCap(){
+    this.MarketCapJob = schedule.scheduleJob(
+      `* */1 * * *`,
+      async () => {
+        if(!this.tokenAddress.size) {
+          console.log('没有可查询的token列表')
+          return false
+        }
+        if(this.inquireStatus){
+          console.log('还在查询中,退出这次查询')
+          return false
+        }
+
+        console.time('查询mc所用时间')
+        this.inquireStatus = true
+        const ms = this.getMs()
+        console.log(`当前一共有:${this.tokenAddress.size} 个token`)
+        const entries = this.tokenAddress.entries()
+        for (let [address, tokenData] of entries) {
+          if(ms > tokenData.timestamp){
+            this.tokenAddress.delete(address)
+            console.error(`${address} 超出了 ${process.env.TOKEN_EXPIRE}H 时间`)
+            continue
+          }
+          if(!tokenData.pairId){
+            console.log(`${address} 没有pairId,需要再次获取`)
+            await this.getPairId(address)
+          }
+
           try {
-            // 打开token详情页
-            await tokenDetail(browser, db, token.address);
-            console.log(`现在一共有${(await browser.pages())?.length}个页面`);
-            // !当token详情页打开后,主页的response事件将会无响应
-            // !必须重新激活gmgn首页
-            await homePage.bringToFront();
+            const res =  await fetch(`https://api.dexscreener.com/latest/dex/search?q=${tokenData.pairId}`)
+            const {pairs} = await res.json() as DEX_SEARCH_PAIR
+            const pair = pairs?.[0]
+            if(!pair){
+              console.error(`${address} pair not found`)
+              continue
+            }
+
+            tokenData.priceUsd = pair.priceUsd
+            console.log(`${address} 市值${pair.marketCap}`)
+            // 低于暴力买入市值
+            if(pair.marketCap>this.vioMarketCap) continue
+
+            console.log('低于暴力买入市值缓存数据')
+            const baseToken = pair?.baseToken
+            await this.db.setHoldToken({
+              address: address,
+              name: baseToken.name,
+              symbol: baseToken.symbol,
+              //! 需要改证实的价格
+              buy_price: `${pair.marketCap}`,
+              buy_amount: `${this.vioMarketCap}`,
+              buy_reason: BUY_REASON.VIOLENCE,
+              buy_timestamp: new Date()
+            });
+            this.tokenAddress.delete(address)
           } catch (error) {
-            console.error("open token detail error", error);
+            console.error(`${address} 老鹰查询市场失败了`,error)
           }
         }
-      });
-    }
-  );
-};
-
-export const start_gmgn = async (db: InitializeDB) => {
-  const isHavePhantom = haveWalletProcess();
-
-  const metamaskExtension = path.join(process.cwd(), "fil/phantom");
-  // Phantom 插件路径
-  if (!isHavePhantom) {
-    console.log("not have wallet secret or password");
-  }
-  const browser = await puppeteer.launch({
-    headless: true,
-    devtools: true,
-    // 注入浏览器插件
-    args: isHavePhantom
-      ? [
-          "--no-sandbox",
-          "--no-first-run",
-          `--disable-extensions-except=${metamaskExtension}`,
-          `--load-extension=${metamaskExtension}`,
-        ]
-      : ["--no-sandbox", "--disable-ipc-flooding-protection", "--no-first-run"],
-  });
-
-  // 根据是否含有钱包地址的环境变量,判断是否要处理钱包的绑定
-  if (isHavePhantom) {
-    // 执行导入钱包操作
-    await onboardingWallet(browser, () => easy_gmgn(browser, db));
-  } else {
-    easy_gmgn(browser, db);
-  }
-};
-
-export async function easy_gmgn(browser: Browser, db: InitializeDB) {
-  const isHavePhantom = haveWalletProcess();
-
-  let token_completeds: COMPLETED[];
-  const [page] = await browser.pages();
-  const agent = new userAgent(
-    {
-      platform: "MacIntel",
-    },
-    {
-      platform: "macOS",
-    }
-  );
-  await page.setUserAgent(agent.toString());
-  await page.goto("https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home");
-  await page.setViewport({ width: 1080, height: 1024 });
-  console.log("页面打开了");
-  // 更新了可能有两个窗口
-  // 关闭弹窗
-  // const closeBtn = await page.waitForSelector(
-  //   ".chakra-modal__content-container .chakra-modal__close-btn"
-  // );
-  // const closeBtn = await page.waitForSelector(".css-12rtj2z .css-pt4g3d");
-  // await closeBtn.click({ delay: 1000 });
-
-  // !处理钱包登陆操作
-  if (isHavePhantom) {
-    await loginWallet(browser, page);
-  }
-  // 确保在pump内
-  let pumpBtn = await page.waitForSelector(
-    "div[class='css-gstdun'] div:first-child"
-  );
-  await pumpBtn.click({ delay: 500 });
-
-  // 查数据库,是否含有没有监听完的token列表
-  // 监听响应
-  page.on("response", async (response) => {
-    const baseUrl = "https://gmgn.ai/defi/quotation/v1/rank/sol/pump_ranks/1h";
-    const url = response.url();
-    // console.log('url', url)
-    if (url.indexOf(baseUrl) === -1) return false;
-    const status = response.status();
-    if (status !== 200) {
-      console.error("sol/pump_ranks/1h api error", status);
-      return false;
-    }
-    const json = (await response.json()).data as PUMP_LIST;
-    const completeds = json.completeds;
-    // 第一次记录token
-    if (!token_completeds) {
-      token_completeds = completeds;
-      console.log("第一次记录");
-      return false;
-    }
-    console.log("开始校验");
-    // 校验新的token列表与旧token列表区别
-    for (let i = 0; i < completeds.length; i++) {
-      const token = completeds[i];
-      // 当遇到相同token时,说明后续都是旧数据
-      if (token_completeds.find((t) => t.address === token.address)) {
-        token_completeds = completeds;
-        return false;
+        this.inquireStatus = false
+        console.timeEnd('查询mc所用时间')
       }
-
-      console.log("新数据来了");
-      // 服务器中存储需要跟踪的数据
-      await db.setToken({
-        address: token.address,
-        created_timestamp: new Date(token.created_timestamp * 1000),
-        holders: token.holder_count,
-        name: token.name,
-        timestamp: token.open_timestamp,
-        open_timestamp: new Date(token.open_timestamp * 1000),
-        price: token.price,
-        symbol: token.symbol,
-      });
-      try {
-        // 打开token详情页
-        await tokenDetail(browser, db, token.address);
-        console.log(`现在一共有${(await browser.pages())?.length}个页面`);
-        // !当token详情页打开后,主页的response事件将会无响应
-        // !必须重新激活gmgn首页
-        await page.bringToFront();
-      } catch (error) {
-        console.error("open token detail error", error);
-      }
-    }
-  });
+    );
+  }
 }
