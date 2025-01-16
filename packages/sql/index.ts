@@ -51,6 +51,7 @@ export class InitializeDB {
     console.log("存储", data.address);
     const token = new Token();
     token.address = data.address;
+    token.pair_id = data.pair_id;
     token.timestamp = data.timestamp;
     token.created_timestamp = data.created_timestamp;
     token.holders = data.holders;
@@ -59,6 +60,12 @@ export class InitializeDB {
     token.price = data.price;
     token.symbol = data.symbol;
     return await this.AppDataSource.manager.save(token);
+  }
+
+  // 更新token
+  async updateToken(data?: Token){
+    const {address, ...config} = data
+    await this.AppDataSource.createQueryBuilder().update(Token).set(config).where('address = :address', {address: data.address}).execute()
   }
 
   // 获取指定时间内,还未购买的token

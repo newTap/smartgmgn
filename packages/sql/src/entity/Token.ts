@@ -8,25 +8,28 @@ export class Token {
   address: string;
 
   @Column()
-  name: string;
+  pair_id?: string;
 
   @Column()
-  price: string;
+  name?: string;
 
   @Column()
-  symbol: string;
+  price?: string;
 
   @Column()
-  holders: number;
+  symbol?: string;
+
+  @Column()
+  holders?: number;
 
   @Column({
     type: "int",
   })
-  timestamp: number;
+  timestamp?: number;
 
   @Column()
-  open_timestamp: Date;
+  open_timestamp?: Date;
 
   @Column()
-  created_timestamp: Date;
+  created_timestamp?: Date;
 }
