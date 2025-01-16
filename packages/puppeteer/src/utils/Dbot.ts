@@ -18,10 +18,14 @@ export class Dbot {
     return this.wallets[0]
   }
 
-  async initialize(){
+  async initializeBot(){
     console.log("初始化")
+    await this.bindWallets(process.env.WALLET_SECRET)
     await this.queryWallets()
-    // !钱包逻辑是否之需要含有一个钱包即可?
+    if(!this.wallets.length){
+      console.error('DBot not available, please enter your private key')
+      return false
+    }
   }
 
   // 查询钱包
@@ -36,6 +40,10 @@ export class Dbot {
 
   // 绑定钱包
   async bindWallets(privateKey:string|Array<string>){
+    if(!privateKey) {
+      console.error("Please enter a private key")
+      return false
+    }
     const res = await this.send_d_bot<D_BOT_WALLETS_RESPONSE>('/account/wallets',{
       body: JSON.stringify({
         type:'solana',

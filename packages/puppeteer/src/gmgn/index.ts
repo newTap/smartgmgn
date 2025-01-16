@@ -8,6 +8,7 @@ import { sleep } from "../utils";
 import { Cluster } from "puppeteer-cluster";
 import fetch from "cross-fetch";
 import { BUY_REASON } from "sql/src/entity/HoldToken";
+import { Dbot } from "../utils/Dbot";
 
 puppeteer.use(StealthPlugin());
 
@@ -21,7 +22,7 @@ interface TokenConfig {
 }
 
 
-export class Smart_Gmgn{
+export class Smart_Gmgn extends Dbot{
   db: InitializeDB
   vioMarketCap: number
   tokenAddress: Map<string, TokenConfig > = new Map()
@@ -30,11 +31,15 @@ export class Smart_Gmgn{
   cluster:Cluster
 
   constructor(db: InitializeDB){
+    super();
     this.vioMarketCap = +process.env.VIO_MARKET_CAP || 3000;
     this.db = db;
   }
 
   async initialize(){
+    // d Bot 初始化
+    await this.initializeBot()
+
     this.cluster = await Cluster.launch({
       concurrency: Cluster.CONCURRENCY_BROWSER,
       maxConcurrency: 2,
