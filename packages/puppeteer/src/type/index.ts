@@ -95,6 +95,25 @@ export interface TOKEN_INFO {
 }
 
 
+export interface BIRDEYE_API<T> {
+  success: boolean;
+  data:T;
+  message?: string;
+}
+
+export interface BIRDEYE_TOKEN_BALANCE {
+   address: string;
+    decimals: number;
+    balance: number;
+    uiAmount: number;
+    chainId: string;
+    logoURI: string;
+    priceUsd: number;
+    valueUsd: number;
+}
+
+
+
 export interface D_BOT_RESPONSE <T>{
   err: boolean
   res:T
@@ -108,7 +127,25 @@ export interface D_BOT_WALLETS{
   address:string;
 }
 
+export interface D_BOT_ORDER {
+  id: string;
+}
+
+export type D_BOT_ORDERS = D_BOT_ORDER_INFO[]
+
+export interface D_BOT_ORDER_INFO {
+  id: string;
+  state: 'init' | 'processing' | 'done' | 'fail' | 'expired';
+  chain: string;
+  tradeType: string;
+  txPriceUsd: number;
+  swapHash: string;
+  errorCode: string;
+  errorMessage: string;
+}
+
 export type D_BOT_WALLETS_RESPONSE = D_BOT_WALLETS[]
+
 export interface DEX_SEARCH_PAIR {
   schemaVersion: string;
   pairs: DEX_Pair[];

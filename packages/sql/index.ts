@@ -47,18 +47,12 @@ export class InitializeDB {
 
   // 存储token
   async setToken(data: Token) {
-    console.log("isInitialized", this.isInitialized);
-    console.log("存储", data.address);
     const token = new Token();
-    token.address = data.address;
-    token.pair_id = data.pair_id;
-    token.timestamp = data.timestamp;
-    token.created_timestamp = data.created_timestamp;
-    token.holders = data.holders;
-    token.name = data.name;
-    token.open_timestamp = data.open_timestamp;
-    token.price = data.price;
-    token.symbol = data.symbol;
+
+    for (const key in data) {
+      token[key] = data[key]
+    }
+
     return await this.AppDataSource.manager.save(token);
   }
 
@@ -83,13 +77,15 @@ export class InitializeDB {
   async setHoldToken(data: HoldToken) {
     console.log("isInitialized", this.isInitialized);
     const holdToken = new HoldToken();
-    holdToken.address = data.address;
-    holdToken.name = data.name;
-    holdToken.symbol = data.symbol;
-    holdToken.buy_price = data.buy_price;
-    holdToken.buy_amount = data.buy_amount;
-    holdToken.buy_reason = data.buy_reason;
-    holdToken.buy_timestamp = data.buy_timestamp;
+    for (const key in data) {
+      holdToken[key] = data[key] 
+    }
     return await this.AppDataSource.manager.save(holdToken);
+  }
+
+  // 更新买入的token记录
+  async updatesHoldToken(data:HoldToken){
+    const {id, ...config} = data
+    await this.AppDataSource.createQueryBuilder().update(HoldToken).set(config).where('id = :id', {id}).execute()
   }
 }

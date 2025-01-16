@@ -2,7 +2,7 @@ import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import userAgent from "user-agents";
 import schedule,{RescheduleJob} from "node-schedule";
-import { COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST, TOKEN_INFO } from "../type";
+import { BIRDEYE_API, BIRDEYE_TOKEN_BALANCE, COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST, TOKEN_INFO } from "../type";
 import { InitializeDB } from "sql";
 import { sleep } from "../utils";
 import { Cluster } from "puppeteer-cluster";
@@ -25,10 +25,16 @@ interface TokenConfig {
 export class Smart_Gmgn extends Dbot{
   db: InitializeDB
   vioMarketCap: number
+  // 监听token列表
   tokenAddress: Map<string, TokenConfig > = new Map()
+  // 订单列表
+  orders:Set<string> = new Set()
   inquireStatus: boolean = false
   MarketCapJob: RescheduleJob
   cluster:Cluster
+  // 买入交易限制数量
+  maxNum = 2;
+  num = 0
 
   constructor(db: InitializeDB){
     super();
@@ -214,6 +220,32 @@ export class Smart_Gmgn extends Dbot{
     );
   }
 
+  checkOrder(id:string,address:string, reason:BUY_REASON){
+    setTimeout(async () => {
+      const data = await this.swapOrders(id)
+
+      data.forEach(async (order) => {
+        console.log(`Order ${id} state: ${order.state}, ${order.errorCode}: ${order.errorMessage}`)
+        if(order.state !== 'done') return false
+        // 订单已完成,查询交易信息
+       try {
+         const info =  await this.queryAmount(this.defaultWallet.address ,address)
+         console.log('order info', info)
+         await this.db.updatesHoldToken({
+            id,
+            address,
+            buy_reason:reason,
+            buy_price: `${order.txPriceUsd}`,
+            buy_amount: `${info.uiAmount}`
+          })
+       } catch (error) {
+        console.error(`订单信息查询失败error`, error)
+       }
+        
+      })
+    }, 3000)
+  }
+
   inquireMarketCap(){
     this.MarketCapJob = schedule.scheduleJob(
       `* */1 * * *`,
@@ -242,9 +274,13 @@ export class Smart_Gmgn extends Dbot{
             console.log(`${address} 没有pairId,需要再次获取`)
             await this.getPairId(address)
           }
-
+          const pairId = this.tokenAddress.get(address).pairId
+          if(!pairId) {
+            console.log('pairId 还未抓到跳出mc查询')
+            continue
+          }
           try {
-            const res =  await fetch(`https://api.dexscreener.com/latest/dex/search?q=${tokenData.pairId}`)
+            const res =  await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${pairId}`)
             const {pairs} = await res.json() as DEX_SEARCH_PAIR
             const pair = pairs?.[0]
             if(!pair){
@@ -254,22 +290,27 @@ export class Smart_Gmgn extends Dbot{
 
             tokenData.priceUsd = pair.priceUsd
             console.log(`${address} 市值${pair.marketCap}`)
-            // 低于暴力买入市值
             if(pair.marketCap>this.vioMarketCap) continue
-
+            
+            // 低于暴力买入市值,优先存储基础数据类型
             console.log('低于暴力买入市值缓存数据')
             const baseToken = pair?.baseToken
+            // 快速买入操作
+            const {id} = await this.violenceOrder(pairId, this.num<=this.maxNum)
+            this.num++
+            console.log('id', id)
+            // 存储基础数据
             await this.db.setHoldToken({
+              id: id,
               address: address,
               name: baseToken.name,
               symbol: baseToken.symbol,
-              //! 需要改证实的价格
-              buy_price: `${pair.marketCap}`,
-              buy_amount: `${this.vioMarketCap}`,
               buy_reason: BUY_REASON.VIOLENCE,
               buy_timestamp: new Date()
             });
+
             this.tokenAddress.delete(address)
+            this.checkOrder(id,address, BUY_REASON.VIOLENCE)
           } catch (error) {
             console.error(`${address} 老鹰查询市场失败了`,error)
           }
@@ -278,5 +319,18 @@ export class Smart_Gmgn extends Dbot{
         console.timeEnd('查询mc所用时间')
       }
     );
+  }
+
+  // 查询amount数量
+  async queryAmount(wallet:string, tokenAddress: string) {
+      let res = await fetch(`https://public-api.birdeye.so/v1/wallet/token_balance?wallet=${wallet}&token_address=${tokenAddress}`, {
+        headers: {
+          accept: 'application/json',
+          'x-chain': 'solana',
+          'X-API-KEY': process.env.BIRDEYE_API_KEY
+        }
+      })
+      const json = await res.json() as BIRDEYE_API<BIRDEYE_TOKEN_BALANCE>;
+      return json.data
   }
 }

@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne, PrimaryColumn } from "typeorm";
 import { Token } from "./Token";
 
 export enum BUY_REASON {
@@ -12,7 +12,7 @@ export enum BUY_REASON {
 
 @Entity()
 export class HoldToken {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryColumn()
   id?: string;
 
   @OneToOne(() => Token, (token) => token.address)
@@ -20,16 +20,16 @@ export class HoldToken {
   address: string;
 
   @Column()
-  name: string;
+  name?: string;
 
   @Column()
-  symbol: string;
+  symbol?: string;
 
-  @Column()
-  buy_price: string;
+  @Column({default: ''})
+  buy_price?: string;
 
-  @Column()
-  buy_amount: string;
+  @Column({default: ''})
+  buy_amount?: string;
 
   // 1.暴力捡垃圾 2.聪明钱亏麻 3.策略型交易
   @Column({
@@ -40,5 +40,5 @@ export class HoldToken {
   buy_reason: BUY_REASON;
 
   @Column("timestamp")
-  buy_timestamp: Date;
+  buy_timestamp?: Date;
 }
