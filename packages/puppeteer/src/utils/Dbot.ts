@@ -65,9 +65,8 @@ export class Dbot {
   async violenceOrder(pair:string, state?: boolean){
     const data = violence
     data.pair = pair;
-    data.walletId = state?this.defaultWallet.id:this.wallets[1].id;
-    console.log('pair', data.pair)
-    console.log('walletId', data.walletId)
+    data.walletId = this.defaultWallet.id
+    
     const res = await this.send_d_bot<D_BOT_ORDER>('/automation/swap_order', {body: JSON.stringify(data),method: 'POST'})
     if(!res.err){
       console.log('buy order success', res.res)

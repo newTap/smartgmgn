@@ -4,11 +4,13 @@ import userAgent from "user-agents";
 import schedule,{RescheduleJob} from "node-schedule";
 import { BIRDEYE_API, BIRDEYE_TOKEN_BALANCE, COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST, TOKEN_INFO } from "../type";
 import { InitializeDB } from "sql";
+import {Agent} from 'https';
 import { sleep } from "../utils";
 import { Cluster } from "puppeteer-cluster";
 import fetch from "cross-fetch";
 import { BUY_REASON } from "sql/src/entity/HoldToken";
 import { Dbot } from "../utils/Dbot";
+import { Loggers } from "../utils/logjs";
 
 puppeteer.use(StealthPlugin());
 
@@ -22,7 +24,7 @@ interface TokenConfig {
 }
 
 
-export class Smart_Gmgn extends Dbot{
+export class Smart_Gmgn extends Dbot {
   db: InitializeDB
   vioMarketCap: number
   // 监听token列表
@@ -32,14 +34,13 @@ export class Smart_Gmgn extends Dbot{
   inquireStatus: boolean = false
   MarketCapJob: RescheduleJob
   cluster:Cluster
-  // 买入交易限制数量
-  maxNum = 2;
-  num = 0
+  console: Loggers
 
   constructor(db: InitializeDB){
     super();
     this.vioMarketCap = +process.env.VIO_MARKET_CAP || 3000;
     this.db = db;
+    this.console = new Loggers()
   }
 
   async initialize(){
@@ -77,7 +78,7 @@ export class Smart_Gmgn extends Dbot{
     const ms = this.getMs()
     // 初始化token列表
     const data = await this.db.getNotByTokens(ms)
-    console.log(`从数据库中获取了${data.length} tokens`)
+     this.console.log(`从数据库中获取了${data.length} tokens`)
     data.forEach(token =>{
       this.tokenAddress.set(token.address,{
         pairId: token.pair_id,
@@ -103,6 +104,8 @@ export class Smart_Gmgn extends Dbot{
 
         const data = (await json.json()).data as TOKEN_INFO;
         const pairId = data.biggest_pool_address
+
+        this.console.info(`${address} pair is ${pairId}`)
         
         await this.db.updateToken({
           address: address,
@@ -117,7 +120,6 @@ export class Smart_Gmgn extends Dbot{
           symbol: data?.symbol || "--",
           timestamp: data.open_timestamp
         })  
-
         await sleep(1000)
 
         await page.close();
@@ -127,11 +129,11 @@ export class Smart_Gmgn extends Dbot{
   async openGmgn(){
     this.cluster.on("taskerror", (err, data, willRetry) => {
       if (willRetry) {
-        console.warn(
+         this.console.warn(
           `Encountered an error while crawling ${data}. ${err.message}\nThis job will be retried`
         );
       } else {
-        console.error(`Failed to crawl ${data}: ${err.message}`);
+         this.console.error(`Failed to crawl ${data}: ${err.message}`);
       }
     });
     this.cluster.queue(
@@ -164,11 +166,10 @@ export class Smart_Gmgn extends Dbot{
           const baseUrl =
             "https://gmgn.ai/defi/quotation/v1/rank/sol/pump_ranks/1h";
           const url = response.url();
-          // console.log('url', url)
           if (url.indexOf(baseUrl) === -1) return false;
           const status = response.status();
           if (status !== 200) {
-            console.error("sol/pump_ranks/1h api error", status);
+             this.console.error("sol/pump_ranks/1h api error", status);
             return false;
           }
           const json = (await response.json()).data as PUMP_LIST;
@@ -176,10 +177,10 @@ export class Smart_Gmgn extends Dbot{
           // 第一次记录token
           if (!token_completeds) {
             token_completeds = completeds;
-            console.log("第一次记录");
+             this.console.log("第一次记录");
             return false;
           }
-          console.log("开始校验");
+           this.console.log("开始校验");
           // 校验新的token列表与旧token列表区别
           for (let i = 0; i < completeds.length; i++) {
             const token = completeds[i];
@@ -188,7 +189,7 @@ export class Smart_Gmgn extends Dbot{
               token_completeds = completeds;
               return false;
             }
-            console.log("新数据来了");
+             this.console.log("新数据来了");
             // 服务器中存储需要跟踪的数据
             await this.db.setToken({
               pair_id: '',
@@ -207,12 +208,12 @@ export class Smart_Gmgn extends Dbot{
             // try {
             //   // 打开token详情页
             //   await tokenDetail(browser, db, token.address);
-            //   console.log(`现在一共有${(await browser.pages())?.length}个页面`);
+            //    this.console.log(`现在一共有${(await browser.pages())?.length}个页面`);
             //   // !当token详情页打开后,主页的response事件将会无响应
             //   // !必须重新激活gmgn首页
             //   await homePage.bringToFront();
             // } catch (error) {
-            //   console.error("open token detail error", error);
+            //    this.console.error("open token detail error", error);
             // }
           }
         });
@@ -220,91 +221,109 @@ export class Smart_Gmgn extends Dbot{
     );
   }
 
-  checkOrder(id:string,tokenAddress:string, reason:BUY_REASON){
+  checkOrder(id: string[], tokenAddress: string[], reason:BUY_REASON): void;
+  checkOrder(id: string, tokenAddress: string, reason:BUY_REASON): void;
+  checkOrder(id:string|string[],tokenAddress:string|string[], reason:BUY_REASON){
     setTimeout(async () => {
       const data = await this.swapOrders(id)
 
-      data.forEach(async (order) => {
-        console.log(`Order ${id} state: ${order.state}, ${order.errorCode}: ${order.errorMessage}`)
+      data.forEach(async (order,index) => {
+        let address:string
+        if(typeof tokenAddress === 'string') {
+          address = tokenAddress
+        }else{
+          address = tokenAddress[index]
+        }
+         this.console.log(`${address}: Order ${order.id} state: ${order.state}, ${order.errorCode}: ${order.errorMessage}`)
         // 初始化和进行中,重新查询
         if(order.state === 'processing' || order.state === 'init'){
-          this.checkOrder(id, tokenAddress, reason)
+          this.checkOrder(order.id, address, reason)
           return false
         }
         // 失败或过期
         if(order.state === 'fail' || order.state === 'expired') return false
         // 订单已完成,查询交易信息
-       try {
-         const info =  await this.queryAmount(this.defaultWallet.address ,tokenAddress)
-         console.log('order info', info)
-         await this.db.updatesHoldToken({
-            id,
-            address:tokenAddress,
-            buy_reason:reason,
-            buy_price: `${order.txPriceUsd}`,
-            buy_amount: `${info.uiAmount}`
-          })
-       } catch (error) {
-        console.error(`订单信息查询失败error`, error)
-       }
+        try {
+          const info =  await this.queryAmount(this.defaultWallet.address ,address)
+           this.console.log('order info', info)
+          if(!info){
+             this.console.log('ord info 为空,重新查询check');
+            this.checkOrder(order.id, address, reason)
+            return false
+          }
+          await this.db.updatesHoldToken({
+              id:order.id,
+              address:address,
+              buy_reason:reason,
+              buy_price: `${order.txPriceUsd}`,
+              buy_amount: `${info.uiAmount}`
+            })
+        } catch (error) {
+           this.console.error(`订单信息查询失败error`, error)
+        }
       })
       // 确认交易成功上链,并且其他三方api能成功返回数据
-    }, 10000)
+    }, 20000)
   }
 
   inquireMarketCap(){
     this.MarketCapJob = schedule.scheduleJob(
-      `* */1 * * *`,
+      `*/30 * * * *`,
       async () => {
         if(!this.tokenAddress.size) {
-          console.log('没有可查询的token列表')
+           this.console.log('没有可查询的token列表')
           return false
         }
         if(this.inquireStatus){
-          console.log('还在查询中,退出这次查询')
+           this.console.log('还在查询中,退出这次查询')
           return false
         }
 
-        console.time('查询mc所用时间')
+         this.console.info('查询mc所用时间-1')
         this.inquireStatus = true
         const ms = this.getMs()
-        console.log(`当前一共有:${this.tokenAddress.size} 个token`)
+         this.console.log(`当前一共有:${this.tokenAddress.size} 个token`)
         const entries = this.tokenAddress.entries()
         for (let [address, tokenData] of entries) {
           if(ms > tokenData.timestamp){
             this.tokenAddress.delete(address)
-            console.error(`${address} 超出了 ${process.env.TOKEN_EXPIRE}H 时间`)
+             this.console.error(`${address} 超出了 ${process.env.TOKEN_EXPIRE}H 时间`)
             continue
           }
           if(!tokenData.pairId){
-            console.log(`${address} 没有pairId,需要再次获取`)
+             this.console.log(`${address} 没有pairId,需要再次获取`)
             await this.getPairId(address)
           }
           const pairId = this.tokenAddress.get(address).pairId
           if(!pairId) {
-            console.log('pairId 还未抓到跳出mc查询')
+             this.console.log('pairId 还未抓到跳出mc查询')
             continue
           }
           try {
-            const res =  await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${pairId}`)
+            const res =  await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${pairId}` ,{
+              method: 'GET',
+              headers: {'Content-Type': 'application/json'},
+              // @ts-ignore
+              agent: new Agent({ rejectUnauthorized: false }) 
+              // timeout: 10000, // 设置超时时间为 10 秒
+            })
             const {pairs} = await res.json() as DEX_SEARCH_PAIR
             const pair = pairs?.[0]
             if(!pair){
-              console.error(`${address} pair not found`)
+               this.console.error(`${address} pair not found`)
               continue
             }
 
             tokenData.priceUsd = pair.priceUsd
-            console.log(`${address} 市值${pair.marketCap}`)
+             this.console.log(`${address} 市值${pair.marketCap}`)
             if(pair.marketCap>this.vioMarketCap) continue
             
             // 低于暴力买入市值,优先存储基础数据类型
-            console.log('低于暴力买入市值缓存数据')
+             this.console.log('低于暴力买入市值缓存数据')
             const baseToken = pair?.baseToken
             // 快速买入操作
-            const {id} = await this.violenceOrder(pairId, this.num<=this.maxNum)
-            this.num++
-            console.log('id', id)
+            const {id} = await this.violenceOrder(pairId)
+             this.console.log(`${address} order id: ${id}`)
             // 存储基础数据
             await this.db.setHoldToken({
               id: id,
@@ -318,11 +337,11 @@ export class Smart_Gmgn extends Dbot{
             this.tokenAddress.delete(address)
             this.checkOrder(id, address, BUY_REASON.VIOLENCE)
           } catch (error) {
-            console.error(`${address} 老鹰查询市场失败了`,error)
+             this.console.error(`${address} 老鹰查询市场失败了`,error)
           }
         }
         this.inquireStatus = false
-        console.timeEnd('查询mc所用时间')
+         this.console.info('查询mc所用时间-2')
       }
     );
   }
@@ -338,11 +357,7 @@ export class Smart_Gmgn extends Dbot{
         }
       })
       const json = await res.json() as BIRDEYE_API<BIRDEYE_TOKEN_BALANCE>;
-      console.log('json', json)
-      if(json.data){
-        return json.data
-      }else{
-        return await this.queryAmount(wallet, tokenAddress)
-      }
+       this.console.log('json', json)
+      return json.data
   }
 }

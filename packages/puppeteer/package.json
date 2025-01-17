@@ -12,6 +12,7 @@
    "license": "ISC",
    "dependencies": {
       "cross-fetch": "^4.1.0",
+      "log4js": "^6.9.1",
       "node-schedule": "^2.1.1",
       "node-stream-zip": "^1.15.0",
       "pg": "^8.4.0",
