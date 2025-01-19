@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { DataSource, Repository, getRepository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { Token } from "./src/entity/Token";
 import { HoldToken } from "./src/entity/HoldToken";
 

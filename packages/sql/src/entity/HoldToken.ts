@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, PrimaryColumn } from "typeorm";
+import { Entity, Column, OneToOne, PrimaryColumn } from "typeorm";
 import { Token } from "./Token";
 
 export enum BUY_REASON {
