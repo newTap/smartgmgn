@@ -322,6 +322,15 @@ export class Smart_Gmgn extends Dbot {
               this.console.log(`${address}:市值 ${pair.marketCap}低于3k老鹰数据出错不做买入操作`)
               continue
             }
+            this.console.log(`${address} - ${pair.marketCap}: 低于暴力买入市值`)
+            // 通过鸟眼,再次查询token市值,确保市值的正确性
+            const { marketcap } = await this.getTokenAc(address)
+            this.console.log(`birdEye 市值:${marketcap}`)
+             if(marketcap > this.vioMarketCap) {
+              this.console.log(`birdEye 数据未能达到暴力买入市值`)
+              continue
+             }
+             this.console.log(`已达到入市值,执行暴力买入操作`)
             // 低于暴力买入市值,优先存储基础数据类型
              this.console.log('低于暴力买入市值缓存数据')
             const baseToken = pair?.baseToken
@@ -362,6 +371,18 @@ export class Smart_Gmgn extends Dbot {
       })
       const json = await res.json() as BIRDEYE_API<BIRDEYE_TOKEN_BALANCE>;
        this.console.log('json', json)
+      return json.data
+  }
+  // 查询市值
+  async getTokenAc(tokenAddress:string){
+    const res =  await fetch(`https://public-api.birdeye.so/defi/v3/token/market-data?address=${tokenAddress}` ,{
+        method: 'GET',
+        headers: {'Content-Type': 'application/json',
+          'x-chain': 'solana',
+          'X-API-KEY': process.env.BIRDEYE_API_KEY
+        },
+      })
+      const json = await res.json() as BIRDEYE_API<BIRDEYE_TOKEN_MARKER>
       return json.data
   }
 }

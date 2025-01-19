@@ -112,6 +112,15 @@ export interface BIRDEYE_TOKEN_BALANCE {
     valueUsd: number;
 }
 
+export interface BIRDEYE_TOKEN_MARKER {
+  address: string;
+  liquidity: number;
+  price: number;
+  supply: number;
+  marketcap: number;
+  circulating_supply: number;
+  circulating_marketcap: number;
+}
 
 
 export interface D_BOT_RESPONSE <T>{
