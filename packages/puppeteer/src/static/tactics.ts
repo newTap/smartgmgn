@@ -38,18 +38,26 @@ export const violence = {
         // 价格涨跌百分比 (0.5表示50%)，当在止盈分组里时，表示上涨多少卖出，当在止损分组里时，表示下跌多少卖出
           "pricePercent": 1,
           // 卖出比例 (0-1，0.5表示50%)
-          "amountPercent": 0.5
-      },
-      {
-          "pricePercent": 2,
           "amountPercent": 0.2
       },
       {
           "pricePercent": 3,
-          "amountPercent": 0.1
+          "amountPercent": 0.2
       },
       {
           "pricePercent": 4,
+          "amountPercent": 0.1
+      },
+      {
+          "pricePercent": 5,
+          "amountPercent": 0.1
+      },
+      {
+          "pricePercent": 7,
+          "amountPercent": 0.1
+      },
+      {
+          "pricePercent": 10,
           "amountPercent": 0.1
       }
   ],
