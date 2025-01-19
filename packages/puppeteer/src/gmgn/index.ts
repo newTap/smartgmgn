@@ -317,7 +317,11 @@ export class Smart_Gmgn extends Dbot {
             tokenData.priceUsd = pair.priceUsd
              this.console.log(`${address} 市值${pair.marketCap}`)
             if(pair.marketCap>this.vioMarketCap) continue
-            
+            // 若市值低于3k则说明老鹰数据出错不做处理
+            if(pair.marketCap<3000){
+              this.console.log(`${address}:市值 ${pair.marketCap}低于3k老鹰数据出错不做买入操作`)
+              continue
+            }
             // 低于暴力买入市值,优先存储基础数据类型
              this.console.log('低于暴力买入市值缓存数据')
             const baseToken = pair?.baseToken
