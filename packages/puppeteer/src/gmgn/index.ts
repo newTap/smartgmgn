@@ -2,7 +2,7 @@ import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import userAgent from "user-agents";
 import schedule,{RescheduleJob} from "node-schedule";
-import { BIRDEYE_API, BIRDEYE_TOKEN_BALANCE, COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST, TOKEN_INFO } from "../type";
+import { BIRDEYE_API, BIRDEYE_TOKEN_BALANCE, BIRDEYE_TOKEN_MARKER, COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST } from "../type";
 import { InitializeDB } from "sql";
 import {Agent} from 'https';
 import { sleep } from "../utils";
@@ -21,6 +21,7 @@ interface TokenConfig {
   name: string
   symbol: string
   timestamp: number
+  tryNum: number
 }
 
 
@@ -68,8 +69,8 @@ export class Smart_Gmgn extends Dbot {
   }
 
   // 获取监听token截止时间的秒值
-  getMs(){
-    const TOKEN_EXPIRE = (+process.env.TOKEN_EXPIRE) || 24
+  getMs(hours?: number){
+    const TOKEN_EXPIRE = hours || (+process.env.TOKEN_EXPIRE) || 24
     const ms =  ((+new Date()) - TOKEN_EXPIRE * 60 * 60 * 1000) /1000 
     return ms
   }
@@ -79,7 +80,7 @@ export class Smart_Gmgn extends Dbot {
     // 初始化token列表
     const data = await this.db.getNotByTokens(ms)
      this.console.log(`从数据库中获取了${data.length} tokens`)
-    data.forEach(token =>{
+    data.forEach(async token =>{
       this.tokenAddress.set(token.address,{
         pairId: token.pair_id,
         priceUsd: token.price,
@@ -87,6 +88,7 @@ export class Smart_Gmgn extends Dbot {
         name: token.name,
         symbol: token.symbol,
         timestamp: token.timestamp,
+        tryNum: 0,
       })
     })
   }
@@ -140,12 +142,14 @@ export class Smart_Gmgn extends Dbot {
           })
         }
 
+         this.tokenAddress.set(address,{
           pairId,
+          tryNum: 0,
           priceUsd: '',
           address: address,
-          name: data?.name || "--",
-          symbol: data?.symbol || "--",
-          timestamp: data.open_timestamp
+          name: name || "--",
+          symbol: symbol || "--",
+          timestamp: open_timestamp,
         })  
         await sleep(1000)
 
@@ -377,13 +381,35 @@ export class Smart_Gmgn extends Dbot {
             this.tokenAddress.delete(address)
             this.checkOrder(id, address, BUY_REASON.VIOLENCE)
           } catch (error) {
-             this.console.error(`${address} 老鹰查询市场失败了`,error)
+            this.console.error(`${address} 老鹰查询市场失败了`,error)
+            const tokenInfo = this.tokenAddress.get(address)
+            this.isDecrepit(tokenInfo)
           }
         }
         this.inquireStatus = false
          this.console.info('查询mc所用时间-2')
       }
     );
+  }
+  // 校验token是否存在超过一小时
+  isDecrepit(tokenInfo: TokenConfig){
+    const {tryNum, timestamp, address} = tokenInfo
+    const MAX_H = 24
+    // 记录查询失败次数
+    // 当失败三次之后,则不再需要跟踪该token
+    if(tryNum >=3){
+      this.console.log(`${address} 错误次数${tryNum}, 不再监听`)
+      this.tokenAddress.delete(address)
+      return false
+    }
+    // 超出24小时之后,增加错误次数
+    if(tryNum > 0 || (this.getMs(MAX_H)) > timestamp) {
+      this.console.log(`${address} 存在超过${MAX_H}小时,增加错误次数`)
+      this.tokenAddress.get(address).tryNum += 1
+      return false
+    }
+
+
   }
 
   // 查询amount数量
