@@ -95,24 +95,51 @@ export class Smart_Gmgn extends Dbot {
     await this.cluster.queue(
       `https://gmgn.ai/sol/token/${address}`,
       async ({ page, data: url }) => {
-        await page.goto(url, { timeout: 900_000 })
+        this.console.log(`inter ${address} token info`)
+        await page.goto(url, { waitUntil: 'load', timeout: 900_000 })
+        console.log('页面打开了')
         // 获取pair 数据信息
-        const json = await page.waitForResponse(
-          (res) => res.url() === `https://gmgn.ai/api/v1/token_info/sol/${address}`,
-          { timeout: 90_000 }
-        );
+        // const json = await page.waitForResponse(
+        //   (res) => res.url() === `https://gmgn.ai/api/v1/token_info/sol/${address}`,
+        //   { timeout: 90_000 }
+        // );
 
-        const data = (await json.json()).data as TOKEN_INFO;
-        const pairId = data.biggest_pool_address
+        // console.log('json', json)
+
+        // const data = (await json.json()).data as TOKEN_INFO;
+        // console.log('data', data)
+        // const pairId = data.biggest_pool_address
+        const scriptContent = await page.evaluate(() => {
+          const script = document.querySelector('#__NEXT_DATA__');
+          return script ? script.textContent : null;
+        });
+        let pairId = ''
+        let name = ''
+        let symbol = ''
+        let open_timestamp = 0
+
+        if (scriptContent) {
+          // 解析 JSON 对象
+          const data = JSON.parse(scriptContent);
+          const tokenInfo = data.props.pageProps.tokenInfo
+          pairId = tokenInfo.pair_address
+          name = tokenInfo.name
+          symbol = tokenInfo.symbol
+          open_timestamp = tokenInfo.open_timestamp
+        } else {
+          this.console.error('未找到指定的 <script> 标签');
+        }
+
+
 
         this.console.info(`${address} pair is ${pairId}`)
-        
-        await this.db.updateToken({
-          address: address,
-          pair_id: pairId
-        })
-        
-        this.tokenAddress.set(address,{
+        if(pairId){
+          await this.db.updateToken({
+            address: address,
+            pair_id: pairId
+          })
+        }
+
           pairId,
           priceUsd: '',
           address: address,
