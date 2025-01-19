@@ -180,6 +180,7 @@ export class Smart_Gmgn extends Dbot {
             platform: "macOS",
           }
         );
+
         await page.goto("https://gmgn.ai/meme/uwc7zMHc?chain=sol&tab=home");
         const [homePage] = await browser.pages();
         await homePage.setUserAgent(agent.toString());
@@ -191,7 +192,7 @@ export class Smart_Gmgn extends Dbot {
           "div[class='css-gstdun'] div:first-child"
         );
         await pumpBtn.click({ delay: 500 });
-
+        this.console.log('gmgn首页打开,开始监听请求')
         // 监听响应
         homePage.on("response", async (response) => {
           const baseUrl =
@@ -211,7 +212,7 @@ export class Smart_Gmgn extends Dbot {
              this.console.log("第一次记录");
             return false;
           }
-           this.console.log("开始校验");
+          
           // 校验新的token列表与旧token列表区别
           for (let i = 0; i < completeds.length; i++) {
             const token = completeds[i];
@@ -220,7 +221,7 @@ export class Smart_Gmgn extends Dbot {
               token_completeds = completeds;
               return false;
             }
-             this.console.log("新数据来了");
+             this.console.log(`新token${token.address}`);
             // 服务器中存储需要跟踪的数据
             await this.db.setToken({
               pair_id: '',
@@ -257,7 +258,7 @@ export class Smart_Gmgn extends Dbot {
   checkOrder(id:string|string[],tokenAddress:string|string[], reason:BUY_REASON){
     setTimeout(async () => {
       const data = await this.swapOrders(id)
-
+      this.console.log(`checkOrder data: `, data)
       data.forEach(async (order,index) => {
         let address:string
         if(typeof tokenAddress === 'string') {
@@ -268,6 +269,7 @@ export class Smart_Gmgn extends Dbot {
          this.console.log(`${address}: Order ${order.id} state: ${order.state}, ${order.errorCode}: ${order.errorMessage}`)
         // 初始化和进行中,重新查询
         if(order.state === 'processing' || order.state === 'init'){
+          this.console.log(`${order.id} 状态未完成,重新等待查询`)
           this.checkOrder(order.id, address, reason)
           return false
         }
@@ -299,7 +301,7 @@ export class Smart_Gmgn extends Dbot {
 
   inquireMarketCap(){
     this.MarketCapJob = schedule.scheduleJob(
-      `*/30 * * * *`,
+      `*/25 * * * *`,
       async () => {
         if(!this.tokenAddress.size) {
            this.console.log('没有可查询的token列表')
@@ -346,7 +348,13 @@ export class Smart_Gmgn extends Dbot {
             }
 
             tokenData.priceUsd = pair.priceUsd
-             this.console.log(`${address} 市值${pair.marketCap}`)
+            console.log(`${address} 市值${pair.marketCap}`)
+            // ! 超过1小时高于60k,减少监听不必要的token
+            if(pair.marketCap > 60_000 && this.getMs(1) > tokenData.timestamp){
+              this.console.log(`超过了1小时,并且市值超过了60_000`)
+              this.tokenAddress.delete(address)
+              continue
+            }
             if(pair.marketCap>this.vioMarketCap) continue
             // 若市值低于3k则说明老鹰数据出错不做处理
             if(pair.marketCap<3000){
@@ -363,7 +371,6 @@ export class Smart_Gmgn extends Dbot {
              }
              this.console.log(`已达到入市值,执行暴力买入操作`)
             // 低于暴力买入市值,优先存储基础数据类型
-             this.console.log('低于暴力买入市值缓存数据')
             const baseToken = pair?.baseToken
             // 快速买入操作
             const {id} = await this.violenceOrder(pairId)
