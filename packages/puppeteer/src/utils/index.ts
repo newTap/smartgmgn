@@ -80,3 +80,16 @@ export function sleep(ms) {
 export function haveWalletProcess() {
   return !!process.env.WALLET_SECRET && !!process.env.WALLET_PASSWORD;
 }
+
+
+export function compareSmallNumbers(numStr1, numStr2) {
+  const num1 = parseFloat(numStr1);
+  const num2 = parseFloat(numStr2);
+
+  if (isNaN(num1) || isNaN(num2)) {
+    throw new Error('Invalid number string');
+    return false
+  }
+
+  return num1 > num2;
+}

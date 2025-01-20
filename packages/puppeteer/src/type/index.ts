@@ -167,13 +167,16 @@ interface DEX_Pair {
   pairAddress: string;
   baseToken: DEX_BaseToken;
   quoteToken: DEX_BaseToken;
+  // 使用这个sol价格
   priceNative: string;
+  // usd价格
   priceUsd: string;
   txns: DEX_Txns;
   volume: DEX_Volume;
   priceChange: DEX_Volume;
   liquidity: DEX_Liquidity;
   fdv: number;
+  // priceUSD * 
   marketCap: number;
   pairCreatedAt: number;
 }
