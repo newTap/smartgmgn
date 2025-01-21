@@ -2,7 +2,7 @@ import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import userAgent from "user-agents";
 import schedule,{RescheduleJob} from "node-schedule";
-import { BIRDEYE_API, BIRDEYE_TOKEN_BALANCE, BIRDEYE_TOKEN_MARKER, COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST } from "../type";
+import { BIRDEYE_API, BIRDEYE_API_PRICES, BIRDEYE_TOKEN_BALANCE, BIRDEYE_TOKEN_MARKER, COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST } from "../type";
 import { InitializeDB } from "sql";
 import {Agent} from 'https';
 import { compareSmallNumbers, sleep } from "../utils";
@@ -81,8 +81,8 @@ export class Smart_Gmgn extends Dbot {
     const ms = this.getMs()
     // 初始化token列表
     const data = await this.db.getNotByTokens(ms)
-     this.console.log(`从数据库中获取了${data.length} tokens`)
-    data.forEach(async token =>{
+    this.console.log(`从数据库中获取了${data.length} tokens`)
+    data.forEach(async token => {
       this.tokenAddress.set(token.address,{
         pairId: token.pair_id,
         priceUsd: token.price,
@@ -305,7 +305,7 @@ export class Smart_Gmgn extends Dbot {
         }
       })
       // 确认交易成功上链,并且其他三方api能成功返回数据
-    }, 20000)
+    }, 40000)
   }
 
   async task(){
@@ -314,100 +314,149 @@ export class Smart_Gmgn extends Dbot {
       return false
     }
     if(this.inquireStatus){
-        this.console.log('还在查询中,退出这次查询')
+      this.console.log('还在查询中,退出这次查询')
       return false
     }
 
-      this.console.info('查询mc所用时间-1')
+    this.console.info('查询mc所用时间-1')
     this.inquireStatus = true
     const ms = this.getMs()
-      this.console.log(`当前一共有:${this.tokenAddress.size} 个token`)
-    const entries = this.tokenAddress.entries()
-    for (let [address, tokenData] of entries) {
-      if(ms > tokenData.timestamp){
-        this.tokenAddress.delete(address)
-          this.console.error(`${address} 超出了 ${process.env.TOKEN_EXPIRE}H 时间`)
-        continue
-      }
-      if(!tokenData.pairId){
-          this.console.log(`${address} 没有pairId,需要再次获取`)
-        await this.getPairId(address)
-      }
-      const pairId = this.tokenAddress.get(address).pairId
-      if(!pairId) {
-          this.console.log('pairId 还未抓到跳出mc查询')
-        continue
-      }
-      try {
-        const res =  await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${pairId}` ,{
-          method: 'GET',
-          headers: {'Content-Type': 'application/json'},
-          // @ts-ignore
-          agent: new Agent({ rejectUnauthorized: false }) 
-          // timeout: 10000, // 设置超时时间为 10 秒
-        })
-        const {pairs} = await res.json() as DEX_SEARCH_PAIR
-        const pair = pairs?.[0]
-        if(!pair){
-            this.console.error(`${address} pair not found`)
-          continue
-        }
-
-        tokenData.priceUsd = pair.priceUsd
-        console.log(`${address} priceNative:  ${pair.priceNative}`)
-        console.log(`${address} marketCap:  ${pair.marketCap}`)
-        // ! 超过1小时高于60k,减少监听不必要的token
-        if(pair.marketCap > 60_000 && this.getMs(1) > tokenData.timestamp){
-          this.console.log(`超过了1小时,并且市值超过了60_000`)
-          this.tokenAddress.delete(address)
-          continue
-        }
-        if(pair.priceNative > this.vioPriceNative) continue
-        // 若市值低于3k则说明老鹰数据出错不做处理
-        // ???需要改特定的数值
-        if(compareSmallNumbers(this.vioMinPrice, pair.priceNative)){
-          console.log(`${address}:价格 低于 ${this.vioMinPrice} 老鹰数据出错不做买入操作`)
-          continue
-        }
-        this.console.log(`${address} - ${pair.priceNative}: 低于暴力买入sol价格`)
-        // 通过鸟眼,再次查询token市值,确保市值的正确性
-        const { price } = await this.getTokenAc(address)
+    this.console.log(`当前一共有:${this.tokenAddress.size} 个token`)
+    try {
         // 拿sol价格
-        const {price:solPrice} = await this.getTokenAc("So11111111111111111111111111111111111111112")
-        const birdEyePriceNative = price/solPrice
-        this.console.log(`当前sol价格:${solPrice}`)
-        this.console.log(`birdEye 价格:${price}`)
-        this.console.log(`bird 计算后的价格, ${birdEyePriceNative}`)
-          if(compareSmallNumbers(birdEyePriceNative, this.vioPriceNative)) {
-          this.console.log(`birdEye 数据未能达到暴力买入市值`)
-          continue
-          }
-          this.console.log(`已达到入市值,执行暴力买入操作`)
-        // 低于暴力买入市值,优先存储基础数据类型
-        const baseToken = pair?.baseToken
-        // 快速买入操作
-        const {id} = await this.violenceOrder(pairId)
-          this.console.log(`${address} order id: ${id}`)
-        // 存储基础数据
-        await this.db.setHoldToken({
-          id: id,
-          address: address,
-          name: baseToken.name,
-          symbol: baseToken.symbol,
-          buy_reason: BUY_REASON.VIOLENCE,
-          buy_timestamp: new Date()
-        });
-
-        this.tokenAddress.delete(address)
-        this.checkOrder(id, address, BUY_REASON.VIOLENCE)
-      } catch (error) {
-        this.console.error(`${address} 老鹰查询市场失败了`,error)
-        const tokenInfo = this.tokenAddress.get(address)
-        this.isDecrepit(tokenInfo)
+      const {price:solPrice} = await this.getTokenAc("So11111111111111111111111111111111111111112")
+      if(!solPrice) {
+        this.console.error("sol price not found", solPrice)
+        this.task()
       }
+      this.console.log(`current sol price is ${solPrice}`)
+      const entries = this.tokenAddress.entries()
+      let tokens = []
+      let index = 0;
+      for (let [address, tokenData] of entries) {
+        index++;
+        if(ms > tokenData.timestamp){
+          this.tokenAddress.delete(address)
+          this.console.error(`${address} 超出了 ${process.env.TOKEN_EXPIRE}H 时间`)
+          continue
+        }
+        if(!tokenData.pairId){
+          this.console.log(`${address} 没有pairId,需要再次获取`)
+          await this.getPairId(address)
+        }
+        if(!this.tokenAddress.get(address).pairId) {
+          this.console.log('pairId 还未抓到跳出mc查询')
+          continue
+        }
+        tokens.push(address)
+        if( index === this.tokenAddress.size){
+          this.console.info(`已经是最后一个token了,一共查询了token:${index}`)
+        }
+        if(tokens.length === 100 || index === this.tokenAddress.size){
+          // try {
+            // 走批量的查询 一次性查询100个token
+            const res =  await fetch(`https://public-api.birdeye.so/defi/multi_price?include_liquidity=true`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-chain': 'solana',
+                'X-API-KEY': process.env.BIRDEYE_API_KEY
+              },
+              body: JSON.stringify({
+                list_address: tokens.join(',')
+              })
+            })
+    
+            const json = await res.json() as BIRDEYE_API<BIRDEYE_API_PRICES>
+            const data = json.data
+
+            for (const address in data) {
+              if(!address)  {
+                this.console.log(`${address} is not found`)
+                continue
+              }
+              const tokenPriceInfo = data[address]
+              // !可能会返回一个null
+              if(!tokenPriceInfo){
+                this.console.error(`${address} price data is null`)
+                continue
+              }
+              const {value:price} = tokenPriceInfo
+              if(!price){
+                this.console.error(`${address} price is null`)
+                continue
+              }
+
+              const pairId = this.tokenAddress.get(address).pairId
+
+              const priceNative = `${price/solPrice}`
+              console.log(`${address} price:  ${price}`)
+              console.log(`${address} price native: ${priceNative}`)
+              tokenData.priceUsd = `${price}`
+              // ! 超过1小时高于60k,减少监听不必要的token
+              // if(pair.marketCap > 60_000 && this.getMs(1) > tokenData.timestamp){
+              //   this.console.log(`超过了1小时,并且市值超过了60_000`)
+              //   this.tokenAddress.delete(address)
+              //   continue
+              // }
+              if(compareSmallNumbers(priceNative, this.vioPriceNative)) continue
+              // 若市值低于3k则说明老鹰数据出错不做处理
+                // // ???需要改特定的数值
+                // if(compareSmallNumbers(this.vioMinPrice, pair.priceNative)){
+                //   console.log(`${address}:价格 低于 ${this.vioMinPrice} 老鹰数据出错不做买入操作`)
+                //   continue
+                // }
+              this.console.log(`${address} - ${priceNative}: 低于暴力买入sol价格-${pairId}`)
+              const baseToken = this.tokenAddress.get(address)
+
+              const {id} = await this.violenceOrder(pairId)
+              this.console.log(`${address} order id: ${id}`)
+              this.console.log('baseToken', baseToken)
+              // 存储基础数据
+              await this.db.setHoldToken({
+                id: id,
+                address: address,
+                name: baseToken.name,
+                symbol: baseToken.symbol,
+                buy_reason: BUY_REASON.VIOLENCE,
+                buy_timestamp: new Date()
+              });
+      
+              this.tokenAddress.delete(address)
+              this.checkOrder(id, address, BUY_REASON.VIOLENCE)
+
+            }
+            tokens = []
+
+            
+            // // 通过鸟眼,再次查询token市值,确保市值的正确性
+            // const { price } = await this.getTokenAc(address)
+            // // 拿sol价格
+            // const birdEyePriceNative = price/solPrice
+            // this.console.log(`当前sol价格:${solPrice}`)
+            // this.console.log(`birdEye 价格:${price}`)
+            // this.console.log(`bird 计算后的价格, ${birdEyePriceNative}`)
+            // if(compareSmallNumbers(birdEyePriceNative, this.vioPriceNative)) {
+            //   this.console.log(`birdEye 数据未能达到暴力买入市值`)
+            //   continue
+            // }
+            // this.console.log(`已达到入市值,执行暴力买入操作`)
+            // 低于暴力买入市值,优先存储基础数据类型
+            // const baseToken = pair?.baseToken
+            // 快速买入操作
+
+          // } catch (error) {
+          //   this.console.error(`${address} 老鹰查询市场失败了`,error)
+          //   const tokenInfo = this.tokenAddress.get(address)
+          //   this.isDecrepit(tokenInfo)
+          // }
+        }
+      }
+    } catch (error) {
+      this.console.error('获取token价值失败', error);
     }
     this.inquireStatus = false
-      this.console.info('查询mc所用时间-2')
+    this.console.info('查询mc所用时间-2')
   }
 
   inquireMarketCap(){

@@ -101,6 +101,16 @@ export interface BIRDEYE_API<T> {
   message?: string;
 }
 
+export interface BIRDEYE_API_PRICES {
+  [key: string]: {
+    "value": number;
+    "updateUnixTime": number
+    "updateHumanTime": string
+    "priceChange24h": number
+    "liquidity": number
+  }
+}
+
 export interface BIRDEYE_TOKEN_BALANCE {
    address: string;
     decimals: number;

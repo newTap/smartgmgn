@@ -38,27 +38,27 @@ export const violence = {
         // 价格涨跌百分比 (0.5表示50%)，当在止盈分组里时，表示上涨多少卖出，当在止损分组里时，表示下跌多少卖出
           "pricePercent": 1,
           // 卖出比例 (0-1，0.5表示50%)
-          "amountPercent": 0.2
+          "amountPercent": 0.1
       },
       {
           "pricePercent": 3,
-          "amountPercent": 0.2
+          "amountPercent": 0.1
       },
       {
           "pricePercent": 4,
-          "amountPercent": 0.1
+          "amountPercent": 0.15
       },
       {
           "pricePercent": 5,
-          "amountPercent": 0.1
+          "amountPercent": 0.15
       },
       {
           "pricePercent": 7,
-          "amountPercent": 0.1
+          "amountPercent": 0.15
       },
       {
           "pricePercent": 10,
-          "amountPercent": 0.1
+          "amountPercent": 0.15
       }
   ],
 
@@ -67,10 +67,10 @@ export const violence = {
   // "true"表示止盈止损任务创建后若有效期内未触发，则在任务结束时自动执行
   "pnlOrderExpireExecute": true,
   // “true”表示将使用自定义参数创建止盈止损任务，否则将使用买入的参数
-  "pnlCustomConfigEnabled": false,
+  "pnlCustomConfigEnabled": true,
   // 自定义的止盈止损参数
   "pnlCustomConfig": {
-      "priorityFee": "",
+      "priorityFee": "0.00001",
       "gasFeeDelta": 5,
       "maxFeePerGas": 100,
       "jitoEnabled": true,
