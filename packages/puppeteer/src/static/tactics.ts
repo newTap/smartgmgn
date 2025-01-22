@@ -46,7 +46,7 @@ export const violence = {
       },
       {
           "pricePercent": 4,
-          "amountPercent": 0.15
+          "amountPercent": 0.10
       },
       {
           "pricePercent": 5,
@@ -79,4 +79,25 @@ export const violence = {
       "concurrentNodes": 2,
       "retries": 5
   }
+}
+
+export const orderStopEarnBaseConfig = {
+  "enabled": true,
+  "tradeType": "sell",
+  // 触发买入/卖出的价格（美元）
+  "triggerPriceUsd": "",
+  "triggerDirection": "up",
+  // 卖出比例
+  "currencyAmountUI": "",
+  "priorityFee": "0.00001",
+  "gasFeeDelta": 5,
+  "maxFeePerGas": 100,
+  "jitoEnabled": true,
+  "jitoTip": 0.00001,
+  "expireDelta": 172800000,
+  // 任务过期仍未触发时，会按过期时的实时价格买入或卖出代币
+  "expireExecute": true,
+  "maxSlippage": 0.2,
+  "concurrentNodes": 2,
+  "retries": 5
 }

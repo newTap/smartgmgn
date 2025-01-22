@@ -150,6 +150,17 @@ export interface D_BOT_ORDER {
   id: string;
 }
 
+export type D_BOT_GROUP_TYPE = 'follow_order'|'limit_order'
+
+export interface D_BOT_GROUP {
+  id: string;
+  accountid: string;
+  name: string;
+  type: string;
+  createAt: string;
+  updateAt: string;
+}
+
 export type D_BOT_ORDERS = D_BOT_ORDER_INFO[]
 
 export interface D_BOT_ORDER_INFO {

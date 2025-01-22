@@ -1,10 +1,33 @@
-import { violence } from "../static/tactics";
-import { D_BOT_ORDER, D_BOT_ORDERS, D_BOT_RESPONSE, D_BOT_WALLETS_RESPONSE } from "../type";
+import BigNumber from 'bignumber.js';
+
+import { orderStopEarnBaseConfig, violence } from "../static/tactics";
+import { D_BOT_GROUP, D_BOT_GROUP_TYPE, D_BOT_ORDER, D_BOT_ORDERS, D_BOT_RESPONSE, D_BOT_WALLETS_RESPONSE } from "../type";
 
 export class Dbot {
   apiKey: string;
   wallets: D_BOT_WALLETS_RESPONSE = [];
+  groups: D_BOT_GROUP[] = [];
   baseUrl = 'https://api-bot-v1.dbotx.com'
+  violenceStopEarnMap = [
+    {
+      pricePercent: '20',
+      percent: '0.05'
+    },
+    {
+      pricePercent: '30',
+      percent: '0.05'
+    },
+    {
+      pricePercent: '50',
+      percent: '0.05'
+    },
+    {
+      pricePercent: '100',
+      percent: '0.05'
+    },
+  ]
+  violenceGroupName = 'violence-order'
+
 
   constructor(){
     this.apiKey = process.env.X_API_KEY
@@ -18,14 +41,24 @@ export class Dbot {
   get defaultWallet(){
     return this.wallets[0]
   }
+  // 获取暴利买入分组
+  get violenceGroup(){
+    return this.groups.filter(group => group.name === this.violenceGroupName)[0]
+  }
 
   async initializeBot(){
     console.log("初始化")
     await this.bindWallets(process.env.WALLET_SECRET)
     await this.queryWallets()
+    await this.queryGroups('limit_order')
     if(!this.wallets.length){
       console.error('DBot not available, please enter your private key')
       return false
+    }
+    // 没有暴力买入分组
+    if(!this.violenceGroup){
+      await this.addGroup('limit_order', this.violenceGroupName)
+      await this.queryGroups('limit_order')
     }
   }
 
@@ -75,6 +108,34 @@ export class Dbot {
     console.log('buy order error', res.res)
   }
 
+  // 暴力买入额外止盈
+  async violenceOrderStopEarn(pairId:string, walletId:string, price:number){
+    const config = {
+      "chain": "solana",
+      "pair": pairId,
+      "walletId": walletId,
+      "groupId": this.violenceGroup.id,
+      "settings": [
+
+      ]
+    }
+    this.violenceStopEarnMap.forEach(({pricePercent, percent}) => {
+      const orderStopEarnItem = orderStopEarnBaseConfig
+      orderStopEarnItem.currencyAmountUI = percent
+      orderStopEarnItem.triggerPriceUsd = new BigNumber(price).multipliedBy(1 + (+pricePercent)).toString(10)
+      config.settings.push(orderStopEarnItem)
+    })
+    const res =  await this.send_d_bot('/automation/limit_orders', {
+      method: 'POST',
+      body: JSON.stringify(config)
+    })
+    console.log('res', res)
+     if(!res.err){
+      return res.res
+    }
+    console.error('violenceOrderStopEarn:',res.res);
+  }
+
   // 查询买买交易
   async swapOrders(ids:string|string[]){
     const res = await this.send_d_bot<D_BOT_ORDERS>(`/automation/swap_orders?ids=${typeof ids === 'string' ? ids : ids.join(',')}`)
@@ -83,6 +144,30 @@ export class Dbot {
       return res.res
     }
     console.error('query orders error', res.res)
+  }
+
+  // 获取钱包的分组信息
+  async queryGroups(type: D_BOT_GROUP_TYPE = 'limit_order'){
+    const res =  await this.send_d_bot<D_BOT_GROUP[]>(`/automation/groups?type=${type}`)
+    if(!res.err){
+      this.groups = res.res
+      return false
+    }
+    console.error('query groups error:',res.res);
+  }
+
+  // 添加分组
+  async addGroup(type:D_BOT_GROUP_TYPE = 'limit_order', name:string){
+    const res =  await this.send_d_bot<D_BOT_GROUP[]>(`/automation/group`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type,name
+      })
+    })
+    if(!res.err){
+      return true
+    }
+    console.error('add groups error:',res.res);
   }
 
 

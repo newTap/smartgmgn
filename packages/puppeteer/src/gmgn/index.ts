@@ -255,31 +255,55 @@ export class Smart_Gmgn extends Dbot {
     );
   }
 
-  checkOrder(id: string[], tokenAddress: string[], reason:BUY_REASON): void;
-  checkOrder(id: string, tokenAddress: string, reason:BUY_REASON): void;
-  checkOrder(id:string|string[],tokenAddress:string|string[], reason:BUY_REASON){
+  checkOrder(data:{
+    id:string
+    tokenAddress:string
+    pairId:string
+  }, reason:BUY_REASON): void;
+  checkOrder(data:{
+    id:string[],
+    tokenAddress:string[],
+    pairId:string[],
+  }, reason:BUY_REASON): void;
+  checkOrder({id, tokenAddress, pairId}:{
+    id:string|string[],
+    tokenAddress:string|string[],
+    pairId:string|string[],
+  }, reason:BUY_REASON){
     setTimeout(async () => {
       let data
       try {
          data = await this.swapOrders(id)
       } catch (error) {
         this.console.log(`查询交易失败${id}: ${tokenAddress}`)
-        this.checkOrder(id as string, tokenAddress as string,reason)
+        this.checkOrder({
+          id:id as string, tokenAddress:tokenAddress as string, pairId: pairId as string
+        },reason)
         return false
       }
       this.console.log(`checkOrder data: `, data)
       data.forEach(async (order,index) => {
         let address:string
+        let pair: string
         if(typeof tokenAddress === 'string') {
           address = tokenAddress
         }else{
           address = tokenAddress[index]
         }
+
+        if(typeof pairId === 'string') {
+          pair = pairId
+        }else{
+          pair = pairId[index]
+        }
+
          this.console.log(`${address}: Order ${order.id} state: ${order.state}, ${order.errorCode}: ${order.errorMessage}`)
         // 初始化和进行中,重新查询
         if(order.state === 'processing' || order.state === 'init'){
           this.console.log(`${order.id} 状态未完成,重新等待查询`)
-          this.checkOrder(order.id, address, reason)
+          this.checkOrder({
+            id:id as string, tokenAddress:tokenAddress as string, pairId: pairId as string
+          }, reason)
           return false
         }
         // 失败或过期
@@ -287,12 +311,17 @@ export class Smart_Gmgn extends Dbot {
         // 订单已完成,查询交易信息
         try {
           const info =  await this.queryAmount(this.defaultWallet.address ,address)
-           this.console.log('order info', info)
+          this.console.log('order info', info)
           if(!info){
-             this.console.log('ord info 为空,重新查询check');
-            this.checkOrder(order.id, address, reason)
+            this.console.log('ord info 为空,重新查询check');
+            this.checkOrder({
+              id:id as string, tokenAddress:tokenAddress as string, pairId: pairId as string
+            }, reason)
             return false
           }
+          // 增加四个止盈订单
+          let orderId = await this.violenceOrderStopEarn(pair, this.defaultWallet.id, info.priceUsd)
+          this.console.log('添加的额外订单数据', orderId)
           await this.db.updatesHoldToken({
               id:order.id,
               address:address,
@@ -305,7 +334,7 @@ export class Smart_Gmgn extends Dbot {
         }
       })
       // 确认交易成功上链,并且其他三方api能成功返回数据
-    }, 40000)
+    }, 20000)
   }
 
   async task(){
@@ -423,7 +452,7 @@ export class Smart_Gmgn extends Dbot {
               });
       
               this.tokenAddress.delete(address)
-              this.checkOrder(id, address, BUY_REASON.VIOLENCE)
+              this.checkOrder({id, tokenAddress:address, pairId}, BUY_REASON.VIOLENCE)
 
             }
             tokens = []
