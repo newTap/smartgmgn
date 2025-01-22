@@ -539,14 +539,4 @@ export class Smart_Gmgn extends Dbot {
       const json = await res.json() as BIRDEYE_API<BIRDEYE_TOKEN_MARKER>
       return json.data
   }
-  // 获取sol价格
-  async getSolPrice(){
-      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd`, {
-          method: 'GET',
-        headers: {'Content-Type': 'application/json',},
-      })
-      const json = await res.json()
-      console.log('json', json)
-      return json.solana.usd as number
-  }
 }
