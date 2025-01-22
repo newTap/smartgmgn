@@ -427,12 +427,11 @@ export class Smart_Gmgn extends Dbot {
               //   continue
               // }
               if(compareSmallNumbers(priceNative, this.vioPriceNative)) continue
-              // 若市值低于3k则说明老鹰数据出错不做处理
-                // // ???需要改特定的数值
-                // if(compareSmallNumbers(this.vioMinPrice, pair.priceNative)){
-                //   console.log(`${address}:价格 低于 ${this.vioMinPrice} 老鹰数据出错不做买入操作`)
-                //   continue
-                // }
+              // 若价格太低了,则说明数据异常
+              if(compareSmallNumbers(this.vioMinPrice, priceNative)){
+                console.error(`${address}:价格 低于 ${this.vioMinPrice} 数据出错不做买入操作`)
+                continue
+              }
               console.log(`${address} - ${priceNative}: 低于暴力买入sol价格-${pairId}`)
               const baseToken = this.tokenAddress.get(address)
 
