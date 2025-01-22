@@ -9,7 +9,9 @@ declare global {
 import userAgent from "user-agents";
 import { splitValueAndUnit, UNIT_TYPE, unitValue } from "../utils";
 import { InitializeDB } from "sql";
-import { BUY_REASON } from "sql/src/entity/HoldToken";
+// import { BUY_REASON } from "sql/src/entity/HoldToken";
+import { BUY_REASON } from "sql/build/src/entity/HoldToken";
+
 import { TOKEN_INFO } from "../type";
 
 // 48小时内监听市值
@@ -22,7 +24,7 @@ export const tokenDetail = async (
   const vioMarketCap = process.env.VIO_MARKET_CAP;
   const page = await browser.newPage();
   let isBuy = false;
-  let reloadErrNum = 0;
+  
   const agent = new userAgent(
     {
       platform: "MacIntel",

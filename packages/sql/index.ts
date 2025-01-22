@@ -1,7 +1,9 @@
 import "reflect-metadata";
 import { DataSource, Repository } from "typeorm";
 import { Token } from "./src/entity/Token";
-import { HoldToken } from "./src/entity/HoldToken";
+import { HoldToken, BUY_REASON } from "./src/entity/HoldToken";
+
+export {Token, HoldToken, BUY_REASON};
 
 export interface DB_CONFIG_TYPE {
   host: string;
