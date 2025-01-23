@@ -10,21 +10,21 @@ export class Dbot {
   baseUrl = 'https://api-bot-v1.dbotx.com'
   violenceStopEarnMap = [
     {
-      pricePercent: '20',
-      percent: '0.05'
+      pricePercent: '500',
+      percent: '1'
     },
-    {
-      pricePercent: '30',
-      percent: '0.05'
-    },
-    {
-      pricePercent: '50',
-      percent: '0.05'
-    },
-    {
-      pricePercent: '100',
-      percent: '0.05'
-    },
+    // {
+    //   pricePercent: '30',
+    //   percent: '0.05'
+    // },
+    // {
+    //   pricePercent: '50',
+    //   percent: '0.05'
+    // },
+    // {
+    //   pricePercent: '100',
+    //   percent: '0.05'
+    // },
   ]
   violenceGroupName = 'violence-order'
 

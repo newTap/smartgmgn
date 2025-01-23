@@ -15,7 +15,7 @@ export const violence = {
   // 防夹模式最大贿赂
   "jitoTip": 0.00004,
   // !最大滑点
-  "maxSlippage": 0.2,
+  "maxSlippage": 0.1,
   // 并发数量
   "concurrentNodes": 2,
   // 失败后的重启次数(1-10)
@@ -36,29 +36,29 @@ export const violence = {
   "stopEarnGroup": [
       {
         // 价格涨跌百分比 (0.5表示50%)，当在止盈分组里时，表示上涨多少卖出，当在止损分组里时，表示下跌多少卖出
-          "pricePercent": 1,
-          // 卖出比例 (0-1，0.5表示50%)
-          "amountPercent": 0.1
-      },
-      {
           "pricePercent": 3,
-          "amountPercent": 0.1
-      },
-      {
-          "pricePercent": 4,
-          "amountPercent": 0.10
+          // 卖出比例 (0-1，0.5表示50%)
+          "amountPercent": 0.2
       },
       {
           "pricePercent": 5,
-          "amountPercent": 0.15
+          "amountPercent": 0.3125
       },
       {
           "pricePercent": 7,
-          "amountPercent": 0.15
+          "amountPercent": 0.2727
       },
       {
           "pricePercent": 10,
-          "amountPercent": 0.15
+          "amountPercent": 0.625
+      },
+      {
+          "pricePercent": 50,
+          "amountPercent": 0.333
+      },
+      {
+          "pricePercent": 100,
+          "amountPercent": 0.50
       }
   ],
 
@@ -75,7 +75,7 @@ export const violence = {
       "maxFeePerGas": 100,
       "jitoEnabled": true,
       "jitoTip": 0.00004,
-      "maxSlippage": 0.2,
+      "maxSlippage": 0.5,
       "concurrentNodes": 2,
       "retries": 5
   }
@@ -97,7 +97,7 @@ export const orderStopEarnBaseConfig = {
   "expireDelta": 172800000,
   // 任务过期仍未触发时，会按过期时的实时价格买入或卖出代币
   "expireExecute": true,
-  "maxSlippage": 0.2,
+  "maxSlippage": 0.5,
   "concurrentNodes": 2,
   "retries": 5
 }
