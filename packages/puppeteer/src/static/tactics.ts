@@ -5,7 +5,7 @@ export const violence = {
   "walletId": '',
   "type": "buy",
   // - 优先费 (SOL)，对Solana有效，空字符串表示使用自动优先费
-  "priorityFee": "0.00001",
+  "priorityFee": "0.00006",
   // evn额外gas费
   "gasFeeDelta": 0,
   // env最大gas费
@@ -13,7 +13,7 @@ export const violence = {
   // 开启防夹模式
   "jitoEnabled": true,
   // 防夹模式最大贿赂
-  "jitoTip": 0.00001,
+  "jitoTip": 0.00004,
   // !最大滑点
   "maxSlippage": 0.2,
   // 并发数量
@@ -70,11 +70,11 @@ export const violence = {
   "pnlCustomConfigEnabled": true,
   // 自定义的止盈止损参数
   "pnlCustomConfig": {
-      "priorityFee": "0.00001",
+      "priorityFee": "0.00006",
       "gasFeeDelta": 5,
       "maxFeePerGas": 100,
       "jitoEnabled": true,
-      "jitoTip": 0.00001,
+      "jitoTip": 0.00004,
       "maxSlippage": 0.2,
       "concurrentNodes": 2,
       "retries": 5
@@ -89,11 +89,11 @@ export const orderStopEarnBaseConfig = {
   "triggerDirection": "up",
   // 卖出比例
   "currencyAmountUI": "",
-  "priorityFee": "0.00001",
+  "priorityFee": "0.00006",
   "gasFeeDelta": 5,
   "maxFeePerGas": 100,
   "jitoEnabled": true,
-  "jitoTip": 0.00001,
+  "jitoTip": 0.00004,
   "expireDelta": 172800000,
   // 任务过期仍未触发时，会按过期时的实时价格买入或卖出代币
   "expireExecute": true,
