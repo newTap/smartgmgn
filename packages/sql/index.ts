@@ -47,6 +47,11 @@ export class InitializeDB {
     console.log("ok");
   }
 
+    // 查询token
+  async getToken(address: string){
+    return await this.tokenRepository.createQueryBuilder('token').where("token.address = :address", { address:address }).getOne();
+  }
+
   // 存储token
   async setToken(data: Token) {
     const token = new Token();
@@ -75,6 +80,11 @@ export class InitializeDB {
     return tokens;
   }
 
+  // 查询买入token
+  async getHoldToken(address: string){
+    return await this.holdTokenRepository.createQueryBuilder('holdToken').where("holdToken.address = :address", { address:address }).getOne();
+  }
+
   // 存贮买入token记录
   async setHoldToken(data: HoldToken) {
     console.log("isInitialized", this.isInitialized);
@@ -89,5 +99,20 @@ export class InitializeDB {
   async updatesHoldToken(data:HoldToken){
     const {id, ...config} = data
     await this.AppDataSource.createQueryBuilder().update(HoldToken).set(config).where('id = :id', {id}).execute()
+  }
+
+  // 获取小时内买入的token数据
+  async getTokensBought(hours: number) {
+    const now = Math.floor(Date.now()/1000);
+    const hoursAgo = now - hours * 60 * 60 ;
+
+    const tokens = await this.holdTokenRepository.createQueryBuilder('holdToken')
+          // .leftJoinAndSelect('holdToken.token', 'token', 'holdToken.address = token.address')
+      .where(`UNIX_TIMESTAMP(holdToken.buy_timestamp) > :hoursAgo`,{
+        hoursAgo
+      })
+      .getMany()
+      
+    return tokens;
   }
 }

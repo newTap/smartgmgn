@@ -15,6 +15,9 @@ export class HoldToken {
   @PrimaryColumn()
   id?: string;
 
+  @Column()
+  sell_id?: string;
+
   @OneToOne(() => Token, (token) => token.address)
   @Column()
   address: string;
