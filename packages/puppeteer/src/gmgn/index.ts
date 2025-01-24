@@ -487,7 +487,7 @@ export class Smart_Gmgn extends Dbot {
 
   inquireMarketCap(){
     this.MarketCapJob = schedule.scheduleJob(
-      `*/25 * * * *`,
+      `*/20 * * * *`,
       this.task.bind(this)
     );
   }

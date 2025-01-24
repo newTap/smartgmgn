@@ -21,7 +21,7 @@ export const violence = {
   // 失败后的重启次数(1-10)
   "retries": 5,
   // !买入/卖出 金额 ETH/SOL/BNB/TRX(0.00-1.00)
-  "amountOrPercent": 0.1,
+  "amountOrPercent": 0.05,
   // Raydium开盘卖出比例（0.00-1.00），对Pump代币有效，0表示不自动卖
   "migrateSellPercent": 1,
   // 触发比例 (0-1)，当Dev卖出超过这个比例时卖出你的代币
