@@ -124,7 +124,7 @@ export class Dbot {
       orderStopEarnItem.currencyAmountUI = percent
       // 最长12位有效数字
       orderStopEarnItem.triggerPriceUsd = new BigNumber(price).multipliedBy(1 + (+pricePercent)).toFixed(12)
-      console.log(`percent:${orderStopEarnItem.currencyAmountUI};triggerPriceUsd:${orderStopEarnItem.triggerPriceUsd}`)
+      console.log(`price:${price} percent:${orderStopEarnItem.currencyAmountUI};triggerPriceUsd:${orderStopEarnItem.triggerPriceUsd}`)
       config.settings.push(orderStopEarnItem)
     })
     const res =  await this.send_d_bot('/automation/limit_orders', {

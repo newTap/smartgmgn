@@ -317,8 +317,8 @@ export class Smart_Gmgn extends Dbot {
             }, reason)
             return false
           }
-          // 增加四个止盈订单
-          let orderId = await this.violenceOrderStopEarn(pair, this.defaultWallet.id, info.priceUsd)
+          // 增加止盈订单
+          let orderId = await this.violenceOrderStopEarn(pair, this.defaultWallet.id, order.txPriceUsd)
           console.log('添加的额外订单数据', orderId)
           await this.db.updatesHoldToken({
               id:order.id,
@@ -526,7 +526,7 @@ export class Smart_Gmgn extends Dbot {
        console.log('json', json)
       return json.data
   }
-  // 查询市值
+  // 查询token市场信息
   async getTokenAc(tokenAddress:string){
     const res =  await fetch(`https://public-api.birdeye.so/defi/v3/token/market-data?address=${tokenAddress}` ,{
         method: 'GET',
