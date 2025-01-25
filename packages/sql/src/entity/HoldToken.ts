@@ -1,4 +1,4 @@
-import { Entity, Column, OneToOne, PrimaryColumn } from "typeorm";
+import { Entity, Column, PrimaryColumn, ManyToOne } from "typeorm";
 import { Token } from "./Token";
 
 export enum BUY_REASON {
@@ -18,8 +18,7 @@ export class HoldToken {
   @Column({default: '', nullable: true})
   sell_id?: string;
 
-  @OneToOne(() => Token, (token) => token.address)
-  @Column()
+  @Column({name:'tokenAddress'})
   address: string;
 
   @Column()
@@ -44,4 +43,7 @@ export class HoldToken {
 
   @Column("timestamp")
   buy_timestamp?: Date;
+
+  @ManyToOne(() => Token, token => token.holdTokens)
+  token?: Token;
 }

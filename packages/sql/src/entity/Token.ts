@@ -1,9 +1,8 @@
-import { Entity, Column, PrimaryColumn, OneToOne } from "typeorm";
+import { Entity, Column, PrimaryColumn, OneToMany } from "typeorm";
 import { HoldToken } from "./HoldToken";
 
 @Entity()
 export class Token {
-  @OneToOne(() => HoldToken, (holdToken) => holdToken.address)
   @PrimaryColumn()
   address: string;
 
@@ -32,4 +31,7 @@ export class Token {
 
   @Column()
   created_timestamp?: Date;
+
+  @OneToMany(() => HoldToken, holdToken => holdToken.token)
+  holdTokens: HoldToken[];
 }
