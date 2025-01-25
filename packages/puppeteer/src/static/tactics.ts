@@ -23,7 +23,7 @@ export const violence = {
 
   // !买入/卖出 金额 ETH/SOL/BNB/TRX(0.00-1.00)
   // 交易类型为sell时，填写卖出比例（0.00-1.00）
-  "amountOrPercent": 0.02,
+  "amountOrPercent":(+process.env.VIO_BUY_TIME),
   // Raydium开盘卖出比例（0.00-1.00），对Pump代币有效，0表示不自动卖
   "migrateSellPercent": 1,
   // 触发比例 (0-1)，当Dev卖出超过这个比例时卖出你的代币

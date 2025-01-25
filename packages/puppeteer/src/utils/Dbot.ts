@@ -105,7 +105,7 @@ export class Dbot {
       data.amountOrPercent = 1
     }else{
       // 买入金额
-      data.amountOrPercent = 0.02
+      data.amountOrPercent = (+process.env.VIO_BUY_TIME)
     }
 
 
