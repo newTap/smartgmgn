@@ -3,7 +3,7 @@
    "version": "1.0.0",
    "description": "",
    "scripts": {
-      "dev": "node -r ts-node/register --env-file=.env ./src/index.ts",
+      "dev": "node -r ts-node/register --env-file=.env ./src/utils/sellAllToken.ts",
       "stop": "pm2 stop pm2.config.js",
       "start": "pm2 start pm2.config.js",
       "build": "tsc"

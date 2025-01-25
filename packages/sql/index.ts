@@ -95,6 +95,17 @@ export class InitializeDB {
     return await this.AppDataSource.manager.save(holdToken);
   }
 
+  // 查询已买入,但是未出售的token
+  async getNotSellHoldTokens(id?:string) {
+    const tokens = await this.holdTokenRepository
+      .createQueryBuilder("holdToken")
+      .where("holdToken.sell_id = :id", { id: id || '' })
+      .leftJoinAndSelect("holdToken.token", "token.pair_id")
+      .limit(20)
+      .getMany();
+    return tokens;
+  }
+
   // 更新买入的token记录
   async updatesHoldToken(data:HoldToken){
     const {id, ...config} = data
