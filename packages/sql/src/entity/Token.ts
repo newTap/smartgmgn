@@ -33,5 +33,5 @@ export class Token {
   created_timestamp?: Date;
 
   @OneToMany(() => HoldToken, holdToken => holdToken.token)
-  holdTokens: HoldToken[];
+  holdTokens?: HoldToken[];
 }
