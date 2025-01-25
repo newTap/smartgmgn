@@ -19,9 +19,9 @@ module.exports = {
               "node_modules", 
               "log",
             ],
-             "watch": [  // 监控变化的目录，一旦变化，自动重启
-              "build",
-            ],
+            //  "watch": [  // 监控变化的目录，一旦变化，自动重启
+            //   "build",
+            // ],
         },
     ],
 };

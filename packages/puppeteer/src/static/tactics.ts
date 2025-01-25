@@ -20,7 +20,9 @@ export const violence = {
   "concurrentNodes": 2,
   // 失败后的重启次数(1-10)
   "retries": 5,
+
   // !买入/卖出 金额 ETH/SOL/BNB/TRX(0.00-1.00)
+  // 交易类型为sell时，填写卖出比例（0.00-1.00）
   "amountOrPercent": 0.02,
   // Raydium开盘卖出比例（0.00-1.00），对Pump代币有效，0表示不自动卖
   "migrateSellPercent": 1,
@@ -65,7 +67,7 @@ export const violence = {
   // 止盈止损任务的过期时间，最大值为864000000 (毫秒) /10天
   "pnlOrderExpireDelta": 172800000, // 2天
   // "true"表示止盈止损任务创建后若有效期内未触发，则在任务结束时自动执行
-  "pnlOrderExpireExecute": true,
+  "pnlOrderExpireExecute": false,
   // “true”表示将使用自定义参数创建止盈止损任务，否则将使用买入的参数
   "pnlCustomConfigEnabled": true,
   // 自定义的止盈止损参数

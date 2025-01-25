@@ -30,14 +30,18 @@ export class Smart_Gmgn extends Dbot {
   tokenAddress: Map<string, TokenConfig > = new Map()
   // 订单列表
   orders:Set<string> = new Set()
+  tokenSellTime: number
   inquireStatus: boolean = false
   MarketCapJob: RescheduleJob
   cluster:Cluster
+  // token清仓最大尝试次数
+  trySellToken = 3
 
   constructor(db: InitializeDB){
     super();
     this.vioPriceNative = process.env.VIO_MARKET_CAP;
     this.vioMinPrice = process.env.VIO_MIN_MARKET_CAP
+    this.tokenSellTime = +process.env.TOKEN_SELL_TIME||24
     this.db = db;
   }
 
@@ -63,6 +67,7 @@ export class Smart_Gmgn extends Dbot {
       },
     });
     await this.initTokens()
+    await this.initSellToken()
     await this.openGmgn()
     this.task()
     this.inquireMarketCap()
@@ -204,7 +209,7 @@ export class Smart_Gmgn extends Dbot {
              console.error("sol/pump_ranks/1h api error", status);
             return false;
           }
-          console.log('sol/pump_ranks/1h is ok')
+          // console.log('sol/pump_ranks/1h is ok')
           const json = (await response.json()).data as PUMP_LIST;
           const completeds = json.completeds;
           // 第一次记录token
@@ -327,6 +332,8 @@ export class Smart_Gmgn extends Dbot {
               buy_price: `${order.txPriceUsd}`,
               buy_amount: `${info.uiAmount}`
             })
+          // 成功买入之后开启自动卖出定任务
+          this.autoSellToken(address, pair)
         } catch (error) {
            console.error(`订单信息查询失败error`, error)
         }
@@ -417,8 +424,8 @@ export class Smart_Gmgn extends Dbot {
               const pairId = this.tokenAddress.get(address).pairId
 
               const priceNative = `${price/solPrice}`
-              console.log(`${address} price:  ${price}`)
-              console.log(`${address} price native: ${priceNative}`)
+              // console.log(`${address} price:  ${price}`)
+              // console.log(`${address} price native: ${priceNative}`)
               tokenData.priceUsd = `${price}`
               // ! 超过1小时高于60k,减少监听不必要的token
               // if(pair.marketCap > 60_000 && this.getMs(1) > tokenData.timestamp){
@@ -435,7 +442,9 @@ export class Smart_Gmgn extends Dbot {
               console.log(`${address} - ${priceNative}: 低于暴力买入sol价格-${pairId}`)
               const baseToken = this.tokenAddress.get(address)
 
-              const {id} = await this.violenceOrder(pairId)
+              // 提交快速买入订单
+              const {id} = await this.violenceOrder(pairId, 'buy')
+
               console.log(`${address} order id: ${id}`)
               console.log('baseToken', baseToken)
               // 存储基础数据
@@ -443,6 +452,7 @@ export class Smart_Gmgn extends Dbot {
                 id: id,
                 address: address,
                 name: baseToken.name,
+                sell_id:'',
                 symbol: baseToken.symbol,
                 buy_reason: BUY_REASON.VIOLENCE,
                 buy_timestamp: new Date()
@@ -450,7 +460,7 @@ export class Smart_Gmgn extends Dbot {
       
               this.tokenAddress.delete(address)
               this.checkOrder({id, tokenAddress:address, pairId}, BUY_REASON.VIOLENCE)
-
+              
             }
             tokens = []
 
@@ -491,6 +501,104 @@ export class Smart_Gmgn extends Dbot {
       this.task.bind(this)
     );
   }
+
+  async initSellToken(){
+    const tokens = await this.db.getTokensBought(this.tokenSellTime)
+    console.log(`一共有${tokens.length}个token需要定时清仓`)
+    
+    tokens.forEach(async ({address}) => {
+      const {pair_id} = await this.db.getToken(address)
+      this.autoSellToken(address, pair_id)
+    });
+  }
+
+  async autoSellToken(address:string, pairId:string){
+    let max_time = (this.tokenSellTime) * 60 * 60 * 1000;
+    const tokenInfo = await this.db.getHoldToken(address)
+    if(!pairId){
+      console.error(`${address}: pairId 不存在`)
+      return false
+    }
+    if(!tokenInfo) {
+      console.error('并没有从数据库找到token信息')
+      return false
+    }
+
+    const {buy_timestamp} = tokenInfo;
+    const token_timestamp = +new Date(buy_timestamp)
+    let time = ( token_timestamp + max_time)
+    console.log(`${address} 添加定时任务,清仓时间:${(time - (+new Date()))/60_60_1000} 小时后`)
+    schedule.scheduleJob(time, async() => {
+      // 快速止损,增加快速订单
+      this.sellToken(address, pairId)
+    })
+  }
+
+  async sellToken(address: string, pairId: string, tryNum = 1){
+    if(tryNum> this.trySellToken) {
+      console.error(`${address} token重试清仓${tryNum}次失败!!不再卖出`)
+      await this.db.updatesHoldToken({
+        address: address,
+        sell_id: '',
+        buy_reason: BUY_REASON.VIOLENCE
+      })
+      return false
+    }
+    tryNum++
+    console.log(`${address} token 购入时间已经达到:${this.tokenSellTime}小时,开始清仓`)
+    try {
+      const {id} =  await this.violenceOrder(pairId, 'sell')
+      console.log(`${address} token清仓id:`, id)
+      if(!id){
+        console.error('没有成功提交订单,重新卖出')
+        this.sellToken(address, pairId, tryNum)
+        return false
+      }
+      
+      await this.db.updatesHoldToken({
+        address: address,
+        sell_id: id,
+        buy_reason: BUY_REASON.VIOLENCE
+      })
+
+      this.checkSellOrder(id, address, pairId, tryNum)
+      return id
+    } catch (error) {
+      console.error(`${address} 清仓失败`, error)
+      if(tryNum> this.trySellToken) {
+        console.error(`${address} token重试清仓${tryNum}次失败!!不再卖出`)
+        return false
+      }
+      console.log('重新清仓')
+      this.sellToken(address, pairId, tryNum)
+    }
+  }
+
+  async checkSellOrder(id:string, address:string, pairId:string, tryNum:number){
+    setTimeout(async() => {
+      try {
+        const [order] =  await this.swapOrders(id)
+          console.log(`清仓订单${id}: Order ${order.id} state: ${order.state}, ${order.errorCode}: ${order.errorMessage}`)
+        if(order.state === 'processing' || order.state === 'init'){
+          console.error(`${order.id} 状态未完成,重新等待查询`)
+          this.checkSellOrder(id,address, pairId, tryNum)
+          return false
+        }
+        if(order.errorCode === 'E_TOKEN_BALANCE_NOT_ENOUGH'){
+          console.error(`${address} 已经被出售完了,不再清仓`)
+          return false
+        }
+        if(order.state === 'fail'){
+          console.log(` 清仓订单 出售失败,重新卖出${id}`)
+          this.sellToken(address, pairId, tryNum)
+        }
+      } catch (error) {
+        this.checkSellOrder(id,address, pairId, tryNum)
+        console.log(`${id}: 查询交易订单状态失败`,error)
+      }
+    },20000)
+  }
+
   // 校验token是否存在超过一小时
   isDecrepit(tokenInfo: TokenConfig){
     const {tryNum, timestamp, address} = tokenInfo

@@ -95,11 +95,20 @@ export class Dbot {
   }
 
   // 暴力买入
-  async violenceOrder(pair:string, state?: boolean){
+  async violenceOrder(pair:string, type: 'buy'|'sell'){
     const data = violence
     data.pair = pair;
     data.walletId = this.defaultWallet.id
-    
+    data.type = type
+    if(type === 'sell'){
+      // 全部卖出
+      data.amountOrPercent = 1
+    }else{
+      // 买入金额
+      data.amountOrPercent = 0.02
+    }
+
+
     const res = await this.send_d_bot<D_BOT_ORDER>('/automation/swap_order', {body: JSON.stringify(data),method: 'POST'})
     if(!res.err){
       console.log('buy order success', res.res)
