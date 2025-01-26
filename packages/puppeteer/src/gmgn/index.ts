@@ -527,7 +527,7 @@ export class Smart_Gmgn extends Dbot {
     const {buy_timestamp} = tokenInfo;
     const token_timestamp = +new Date(buy_timestamp)
     let time = ( token_timestamp + max_time)
-    console.log(`${address} 添加定时任务,清仓时间:${(time - (+new Date()))/60_60_1000} 小时后`)
+    // console.log(`${address} 添加定时任务,清仓时间:${(time - (+new Date()))/60_60_1000} 小时后`)
     schedule.scheduleJob(time, async() => {
       // 快速止损,增加快速订单
       this.sellToken(address, pairId)

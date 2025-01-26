@@ -112,7 +112,7 @@ export class InitializeDB {
     await this.AppDataSource.createQueryBuilder().update(HoldToken).set(config).where('id = :id', {id}).execute()
   }
 
-  // 获取小时内买入的token数据
+  // 获取小时内未卖出的token数据
   async getTokensBought(hours: number) {
     const now = Math.floor(Date.now()/1000);
     const hoursAgo = now - hours * 60 * 60 ;
@@ -122,6 +122,7 @@ export class InitializeDB {
       .where(`UNIX_TIMESTAMP(holdToken.buy_timestamp) > :hoursAgo`,{
         hoursAgo
       })
+      .andWhere("holdToken.sell_id = :id", { id: '' })
       .getMany()
       
     return tokens;
