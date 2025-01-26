@@ -1,7 +1,66 @@
 export interface PUMP_LIST {
   pumps: any[];
-  new_creations: any[];
+  new_creations: NEW_CREATIONS[];
   completeds: COMPLETED[];
+}
+
+export interface NEW_CREATIONS{
+ address: string;
+  name: string;
+  symbol: string;
+  twitter: null;
+  website: null;
+  telegram: null;
+  created_timestamp: number;
+  complete: number;
+  last_trade_timestamp: number;
+  king_of_the_hill_timestamp: number;
+  reply_count: null;
+  last_reply: number;
+  usd_market_cap: string;
+  price: number;
+  updated_at: number;
+  creator: string;
+  creator_close: number;
+  creator_token_balance: string;
+  progress: number;
+  status: number;
+  logo: string;
+  koth_duration: number;
+  time_since_koth: number;
+  open_timestamp: null;
+  volume_1m: string;
+  volume_5m: string;
+  volume_1h: string;
+  volume_6h: string;
+  volume_24h: string;
+  swaps_1m: number;
+  swaps_5m: number;
+  swaps_1h: number;
+  swaps_6h: number;
+  swaps_24h: number;
+  price_change_percent1m: string;
+  price_change_percent5m: string;
+  market_cap_1m: string;
+  market_cap_5m: string;
+  holder_count: number;
+  total_supply: number;
+  dev_token_burn_amount: null;
+  dev_token_burn_ratio: null;
+  dexscr_ad: number;
+  dexscr_update_link: number;
+  cto_flag: number;
+  twitter_change_flag: number;
+  bot_degen_count: string;
+  top_10_holder_rate: null;
+  creator_token_status: string;
+  creator_balance: string;
+  creator_balance_rate: string;
+  rat_trader_amount_rate: number;
+  bluechip_owner_percentage: number;
+  smart_degen_count: number;
+  renowned_count: number;
+  is_wash_trading: boolean;
 }
 
 export interface COMPLETED {
