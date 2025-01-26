@@ -96,7 +96,8 @@ export const orderStopEarnBaseConfig = {
   "maxFeePerGas": 100,
   "jitoEnabled": true,
   "jitoTip": 0.00004,
-  "expireDelta": 172800000,
+  // 24小时
+  "expireDelta": 86400000,
   // 任务过期仍未触发时，会按过期时的实时价格买入或卖出代币
   "expireExecute": true,
   "maxSlippage": 0.5,
