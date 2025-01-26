@@ -2,8 +2,9 @@ import "reflect-metadata";
 import { DataSource, Repository } from "typeorm";
 import { Token } from "./src/entity/Token";
 import { HoldToken, BUY_REASON } from "./src/entity/HoldToken";
+import { NewCreationToken } from "./src/entity/NewCreationToken";
 
-export {Token, HoldToken, BUY_REASON};
+export {Token, HoldToken, BUY_REASON, NewCreationToken};
 
 export interface DB_CONFIG_TYPE {
   host: string;
@@ -32,7 +33,7 @@ export class InitializeDB {
       charset: "utf8mb4",
       synchronize: true,
       logging: false,
-      entities: [Token, HoldToken],
+      entities: [Token, HoldToken, NewCreationToken],
       migrations: [],
       subscribers: [],
     });
@@ -87,7 +88,6 @@ export class InitializeDB {
 
   // 存贮买入token记录
   async setHoldToken(data: HoldToken) {
-    console.log("isInitialized", this.isInitialized);
     const holdToken = new HoldToken();
     for (const key in data) {
       holdToken[key] = data[key] 
@@ -126,5 +126,17 @@ export class InitializeDB {
       .getMany()
       
     return tokens;
+  }
+
+
+  // 记录新出token
+  async setNewCreationToken(data: NewCreationToken) {
+    const newCreationToken = new NewCreationToken();
+    for (const key in data) {
+      if(data[key] ){
+        newCreationToken[key] = data[key] 
+      }
+    }
+    return await this.AppDataSource.manager.save(newCreationToken);
   }
 }

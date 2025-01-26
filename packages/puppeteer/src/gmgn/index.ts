@@ -2,7 +2,7 @@ import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import userAgent from "user-agents";
 import schedule,{RescheduleJob} from "node-schedule";
-import { BIRDEYE_API, BIRDEYE_API_PRICES, BIRDEYE_TOKEN_BALANCE, BIRDEYE_TOKEN_MARKER, COMPLETED, DEX_SEARCH_PAIR, PUMP_LIST } from "../type";
+import { BIRDEYE_API, BIRDEYE_API_PRICES, BIRDEYE_TOKEN_BALANCE, BIRDEYE_TOKEN_MARKER, COMPLETED, NEW_CREATIONS, PUMP_LIST } from "../type";
 import { InitializeDB, BUY_REASON } from "sql";
 import { compareSmallNumbers, sleep } from "../utils";
 import { Cluster } from "puppeteer-cluster";
@@ -177,6 +177,7 @@ export class Smart_Gmgn extends Dbot {
       async ({ page, data: url }) => {
         const browser = page.browser();
         let token_completeds: COMPLETED[];
+        let new_creations: NEW_CREATIONS[];
         const agent = new userAgent(
           {
             platform: "MacIntel",
@@ -215,9 +216,12 @@ export class Smart_Gmgn extends Dbot {
           // 第一次记录token
           if (!token_completeds) {
             token_completeds = completeds;
+            new_creations = json.new_creations;
              console.log("第一次记录");
             return false;
           }
+          // new_creations数据对比
+          this.compareNewCreations(new_creations, json.new_creations);
           // 校验新的token列表与旧token列表区别
           for (let i = 0; i < completeds.length; i++) {
             const token = completeds[i];
@@ -256,6 +260,38 @@ export class Smart_Gmgn extends Dbot {
         });
       }
     );
+  }
+
+  async compareNewCreations(old_creations:NEW_CREATIONS[], new_creations:NEW_CREATIONS[]){
+    for (let i = 0; i < new_creations.length; i++) {
+        const token = new_creations[i];
+        // 当遇到相同token时,说明后续都是旧数据
+        if (old_creations.find((t) => t.address === token.address)) {
+          old_creations = new_creations;
+          return false;
+        }
+        // 服务器中存储需要跟踪的数据
+        try {
+          await this.db.setNewCreationToken({
+            address: token.address,
+            name: token.name,
+            symbol: token.symbol,
+            price: token.price,
+            created_timestamp: new Date(token.created_timestamp * 1000),
+            creator: token.creator,
+            creator_balance: token.creator_balance,
+            creator_token_balance: token.creator_token_balance,
+            website:token.website,
+            twitter:token.twitter,
+            telegram:token.telegram,
+            logo:token.logo,
+            holder_count:token.holder_count,
+          });
+        } catch (error) {
+          console.log('error',error)
+          console.log('token', token)
+        } 
+      }
   }
 
   checkOrder(data:{
