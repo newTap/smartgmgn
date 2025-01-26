@@ -1,8 +1,8 @@
 import fetch from 'cross-fetch';
-import { BUY_REASON, InitializeDB } from '../../../sql/index';
 import { BIRDEYE_API, BIRDEYE_TOKEN_BALANCE } from '../type';
 import { Dbot } from './Dbot';
 import { sleep } from '.';
+import { BUY_REASON, InitializeDB } from 'sql';
 
 async function main(){
   const wallet = '5RLYauDu6UjDkhfQiQrC6r3g7Ma3dkoKeXFbm1Pg2Qx'
