@@ -59,6 +59,7 @@ export class Smart_Gmgn extends Dbot {
         // 注入浏览器插件
         args: [
           // '--proxy-server=http://212.76.118.242:97',
+          '--disable-gpu',
           '--disable-dev-shm-usage',
           "--no-sandbox",
           "--disable-ipc-flooding-protection",
