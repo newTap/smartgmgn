@@ -99,68 +99,65 @@ export class Smart_Gmgn extends Dbot {
     })
   }
 
-  async getPairId(address:string){
+  async getPairId(address:string, isError=false){
     await this.cluster.queue(
       `https://gmgn.ai/sol/token/${address}`,
       async ({ page, data: url }) => {
-        console.log(`inter ${address} token info`)
-        await page.goto(url, { waitUntil: 'load', timeout: 900_000 })
-        console.log('页面打开了')
-        // 获取pair 数据信息
-        // const json = await page.waitForResponse(
-        //   (res) => res.url() === `https://gmgn.ai/api/v1/token_info/sol/${address}`,
-        //   { timeout: 90_000 }
-        // );
+       try {
+          console.log(`inter ${address} token info`)
+          await page.goto(url, { waitUntil: 'load', timeout: 900_000 })
+          console.log('页面打开了')
+          // 获取pair 数据信息
+          const scriptContent = await page.evaluate(() => {
+            const script = document.querySelector('#__NEXT_DATA__');
+            return script ? script.textContent : null;
+          });
+          let pairId = ''
+          let name = ''
+          let symbol = ''
+          let open_timestamp = 0
 
-        // console.log('json', json)
+          if (scriptContent) {
+            // 解析 JSON 对象
+            const data = JSON.parse(scriptContent);
+            const tokenInfo = data.props.pageProps.tokenInfo
+            pairId = tokenInfo.pair_address
+            name = tokenInfo.name
+            symbol = tokenInfo.symbol
+            open_timestamp = tokenInfo.open_timestamp
+          } else {
+            console.error('未找到指定的 <script> 标签');
+          }
+          console.info(`${address} pair is ${pairId}`)
+          if(pairId){
+            await this.db.updateToken({
+              address: address,
+              pair_id: pairId
+            })
+          }
 
-        // const data = (await json.json()).data as TOKEN_INFO;
-        // console.log('data', data)
-        // const pairId = data.biggest_pool_address
-        const scriptContent = await page.evaluate(() => {
-          const script = document.querySelector('#__NEXT_DATA__');
-          return script ? script.textContent : null;
-        });
-        let pairId = ''
-        let name = ''
-        let symbol = ''
-        let open_timestamp = 0
-
-        if (scriptContent) {
-          // 解析 JSON 对象
-          const data = JSON.parse(scriptContent);
-          const tokenInfo = data.props.pageProps.tokenInfo
-          pairId = tokenInfo.pair_address
-          name = tokenInfo.name
-          symbol = tokenInfo.symbol
-          open_timestamp = tokenInfo.open_timestamp
-        } else {
-          console.error('未找到指定的 <script> 标签');
-        }
-
-
-
-        console.info(`${address} pair is ${pairId}`)
-        if(pairId){
-          await this.db.updateToken({
+          this.tokenAddress.set(address,{
+            pairId,
+            tryNum: 0,
+            priceUsd: '',
             address: address,
-            pair_id: pairId
-          })
+            name: name || "--",
+            symbol: symbol || "--",
+            timestamp: open_timestamp,
+          })  
+          await sleep(1000)
+
+          await page.close();
+       } catch (error) {
+        console.error(`${address} pair获取失败:`,error);
+        if(isError){
+          console.error(`${address} 获取失败过,不再尝试`)
+        }else{
+          this.getPairId(address, true)
+          console.error('再次重试一次获取pairId')
         }
-
-         this.tokenAddress.set(address,{
-          pairId,
-          tryNum: 0,
-          priceUsd: '',
-          address: address,
-          name: name || "--",
-          symbol: symbol || "--",
-          timestamp: open_timestamp,
-        })  
-        await sleep(1000)
-
-        await page.close();
-      })
+       }
+    })
   }
 
   async openGmgn(){
