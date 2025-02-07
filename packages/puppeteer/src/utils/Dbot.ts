@@ -10,7 +10,7 @@ export class Dbot {
   baseUrl = 'https://api-bot-v1.dbotx.com'
   violenceStopEarnMap = [
     {
-      pricePercent: '500',
+      pricePercent: '300',
       percent: '1'
     },
     // {
