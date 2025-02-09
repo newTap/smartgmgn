@@ -44,23 +44,23 @@ export const violence = {
       },
       {
           "pricePercent": 5,
-          "amountPercent": 0.3125
+          "amountPercent": 0.1875
       },
       {
           "pricePercent": 7,
-          "amountPercent": 0.2727
+          "amountPercent": 0.23
       },
       {
           "pricePercent": 10,
-          "amountPercent": 0.625
+          "amountPercent": 0.5
       },
       {
-          "pricePercent": 50,
-          "amountPercent": 0.333
+          "pricePercent": 15,
+          "amountPercent": 0.4
       },
       {
-          "pricePercent": 100,
-          "amountPercent": 0.50
+          "pricePercent": 25,
+          "amountPercent": 0.667
       }
   ],
 
